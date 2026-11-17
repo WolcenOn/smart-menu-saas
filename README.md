@@ -1,40 +1,55 @@
 # Smart Menu SaaS
 
-Plataforma en desarrollo para cartas digitales inteligentes de hostelería.
+Plataforma de cartas digitales inteligentes para hostelería.
 
 ## Estado
 
-Esta rama propone **una base pública estática**, sin autenticación ni persistencia todavía. No utilizar para datos reales de restaurantes o clientes.
+**Prototipo en desarrollo, no listo para restaurantes reales.** Esta rama incluye una carta pública alimentada por PostgreSQL y una semilla de pruebas. Todavía **no** hay autenticación ni edición de cartas.
 
-## Funcionalidades planificadas
+Funciones ya implementadas:
+- Esquema multirrestaurante básico en PostgreSQL + Prisma.
+- Los 14 grupos de alérgenos y control de revisión para publicación.
+- Carta pública en `/r/[slug]` con nombres y descripciones renderizados como texto seguro en React.
+- Plato marcado como **Agotado** permanece visible.
+- Endpoint de disponibilidad `/api/health` (comprueba PostgreSQL).
+- Pruebas unitarias con Vitest y E2E con Playwright (escritorio y móvil).
 
-- Cartas personalizables y QR por restaurante.
-- Información de los 14 grupos de alérgenos, etiquetas veganas y variantes alimentarias verificadas.
-- Platos y promociones con disponibilidad programada.
-- Estado **Agotado** visible en la carta, sin permitir solicitar el plato.
-- Precomandas QR organizadas por momentos de servicio y confirmadas por camarero.
-- Impresión de comandas con identificación de mesa, en fase posterior.
-- Cuotas por productos e imágenes; personalización premium opcional.
+Funciones pendientes: permisos y autenticación, editor, fotos seguras, etiquetas dietéticas, programación, reservas, precomandas y tickets.
 
-## Stack
+## Inicio local
 
-Next.js, TypeScript y CSS. PostgreSQL/Prisma y Railway están previstos para la siguiente fase.
+Requisitos: Node.js 22, npm y PostgreSQL.
 
-## Desarrollo local
+1. Copia `.env.example` a `.env` e introduce la URL de una base de datos **de desarrollo**.
+2. Ejecuta:
 
 ```bash
 npm install
+npx prisma generate
+npm run db:migrate
+npm run db:seed
 npm run dev
 ```
 
-Comprobaciones:
+Para una demostración de la carta `/r/demo-restaurante` en una **base desechable de pruebas**, ejecuta `E2E_TEST_SEED=1 npm run db:seed`. Esa acción borra y recrea el restaurante demo si ya existe. **Nunca** establezcas esa variable en producción.
+
+## Comprobaciones
 
 ```bash
 npm run typecheck
 npm run lint
+npm run test
 npm run build
+npx playwright install chromium
+npm run test:e2e
 ```
 
-Consulta [SECURITY.md](SECURITY.md) y [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) antes de añadir nuevas funcionalidades.
+E2E requiere PostgreSQL migrado, datos de prueba cargados y conexión por `DATABASE_URL`.
 
-**Importante:** El repositorio actual contiene una licencia GPLv3. Revisar si se ajusta a la estrategia comercial antes de distribuir el software.
+**Pendiente importante:** generar y confirmar `package-lock.json` después de verificar compatibilidad de dependencias y cambiar el CI a `npm ci`; no fusionar sin una ejecución satisfactoria de GitHub Actions.
+
+Consulta [SECURITY.md](SECURITY.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) y [docs/RAILWAY.md](docs/RAILWAY.md).
+
+## Licencia
+
+El repositorio contiene actualmente licencia GPLv3. Revisar su conveniencia para el modelo comercial antes de distribuir software.

@@ -1,24 +1,29 @@
 # Seguridad — Smart Menu SaaS
 
-## Principios obligatorios
+## Reglas de desarrollo
 
-- Nunca utilizar `dangerouslySetInnerHTML`, `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `eval`, `new Function` ni `document.write` con datos del usuario. Renderizar texto con JSX; si en el futuro hay HTML enriquecido, exigir revisión de diseño, sanitización especializada y pruebas.
-- Prohibido construir SQL mediante concatenación. Usar Prisma y consultas parametrizadas. Evitar `$queryRawUnsafe`.
-- Toda operación privada debe verificar sesión, pertenencia al restaurante y rol **en el servidor**. No aceptar `restaurantId` como prueba de autorización.
-- Validar datos en servidor con esquemas estrictos (p. ej. Zod), límites de longitud y tipos. La validación frontend solo mejora UX.
-- Proteger mutaciones frente a CSRF y verificar origen; cookies HttpOnly, Secure y SameSite. Nunca almacenar tokens de sesión en localStorage.
-- Secrets únicamente en entorno de Railway/secret manager; nunca en el repositorio ni en variables `NEXT_PUBLIC_`.
-- Fotografías: compresión en navegador para reducir tráfico, subida directa temporal, control de cuota en servidor, validación real del objeto en almacenamiento aislado y publicación solo tras aprobación. No admitir SVG arbitrario.
-- No introducir URLs de terceros directamente en `href`, redirecciones o imágenes; permitir protocolos y hosts autorizados.
-- QR de precomanda: tokens opacos de alta entropía, expiración, una única confirmación idempotente y revalidación del precio y disponibilidad.
-- Mantener alérgenos verificados y separados de etiquetas voluntarias o modificaciones del cliente.
-- Prohibido publicar mensajes de error con secretos, SQL o trazas internas.
-- Ejecutar análisis estático, pruebas, revisión de dependencias y revisión de permisos antes de fusionar una PR.
+- No usar `dangerouslySetInnerHTML`, `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `eval`, `new Function` ni `document.write` para contenido externo. Mostrar nombres, platos y observaciones mediante JSX (escapado de React).
+- No interpolar SQL. Utilizar Prisma, filtros y consultas parametrizadas; nunca `$queryRawUnsafe` con entradas externas.
+- Antes de crear **cualquier** endpoint de escritura, implementar autenticación, pertenencia al restaurante, permisos por rol y protección CSRF en servidor.
+- Validar toda entrada en el servidor (tipos, longitud, cuotas y relaciones). Usar Zod al introducir mutaciones.
+- Cookies de sesión `HttpOnly`, `Secure` y `SameSite`. Nada de tokens de sesión en localStorage.
+- No subir originales a Next.js: optimizar imágenes en navegador y usar subida directa al bucket con autorización temporal, validación real y almacenamiento aislado. No admitir SVG arbitrario.
+- No aceptar URL arbitraria de cliente como destino de redirección, imagen o petición a servidor; aplicar allowlists y protocolos HTTPS.
+- Para QR de precomanda: token opaco de alta entropía, caducidad, idempotencia y revalidación de precio/disponibilidad.
+- Las etiquetas dietéticas y los alérgenos deben ser confirmados, nunca inferidos a partir de textos libres.
+- Evitar errores que expongan secretos, SQL o trazas. Los logs no deben almacenar datos personales innecesarios.
+- Revisar permisos por tenant y ejecutar CI y auditoría antes de fusionar.
 
-## Riesgos y estado de esta rama
+## Estado actual
 
-Esta rama contiene **solo una pantalla pública estática**, sin login, base de datos ni entrada de datos de clientes. **No está lista para producción SaaS**. La cabecera CSP inicial contiene `unsafe-inline` para compatibilidad; antes de exponer formularios o datos de restaurantes debe endurecerse con nonces/hashes adaptados a Next.js, probarse con la configuración real y revisar todas las fuentes externas. HSTS únicamente cuando el dominio HTTPS definitivo esté configurado correctamente.
+Esta rama introduce **solo lecturas públicas**. La lógica de disponibilidad visible se consulta desde PostgreSQL. No hay editor ni endpoint que permita editar restaurantes sin autorización.
 
-## Notificación de vulnerabilidades
+El `next.config.ts` actual incluye una **CSP provisional con `unsafe-inline`**, por compatibilidad inicial. Esto **no es una CSP estricta**. Antes de lanzar usuarios reales, implementar una política con nonces/hashes adecuada para la versión instalada de Next.js y probar en Chromium/WebKit; añadir HSTS solo cuando HTTPS y el dominio estén bien configurados.
 
-No publicar exploits ni credenciales en issues públicos. Contactar de forma privada al responsable del proyecto.
+Se proporciona un plato con texto hostil únicamente en la semilla E2E opcional. Nunca activar `E2E_TEST_SEED=1` en producción.
+
+El control de revisión de alérgenos es una base técnica; **no acredita por sí mismo cumplimiento legal**. Un responsable del restaurante debe validar los datos y las variantes de cada plato.
+
+## Notificación privada
+
+No comunicar vulnerabilidades ni secretos mediante issues públicos. Contactar por un canal privado al responsable del repositorio.
