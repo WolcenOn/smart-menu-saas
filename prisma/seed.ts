@@ -16,7 +16,7 @@ async function main() {
     await prisma.allergen.upsert({ where: { id }, update: { name }, create: { id, name } });
   }
 
-  // Los platos de prueba se crean SOLO en un entorno de tests E2E explícito.
+  // E2E only: this deletes a fixture restaurant. Never enable outside disposable CI databases.
   if (process.env.E2E_TEST_SEED !== '1') return;
 
   const slug = 'demo-restaurante';
@@ -27,6 +27,9 @@ async function main() {
     data: {
       slug,
       name: 'Restaurante de demostración',
+      tagline: 'Cocina mediterránea para compartir',
+      themePreset: 'TERRACOTTA',
+      menuLayout: 'CARDS',
       menus: { create: [{
         name: 'Carta principal', published: true,
         categories: { create: [{
