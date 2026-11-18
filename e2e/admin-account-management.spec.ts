@@ -60,7 +60,7 @@ test('administrator can pause, restore and permanently remove account access whi
   await page.goto('/admin');
   const activeRow = page.getByRole('article', { name: 'Cuenta de ' + email });
   await activeRow.getByText('Eliminar acceso definitivamente').click();
-  await activeRow.getByPlaceholder(email).fill(email);
+  await activeRow.getByRole('textbox', { name: 'Escribe exactamente el correo para confirmar:' }).fill(email);
   await activeRow.getByRole('button', { name: 'Confirmar eliminación del acceso' }).click();
   await expect(activeRow.getByText('Acceso eliminado')).toBeVisible();
   await expect(activeRow.getByText(restaurantName)).toBeVisible();
