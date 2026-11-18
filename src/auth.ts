@@ -27,7 +27,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(raw) {
         const input = credentialsSchema.safeParse(raw);
-        if (!input.success) return null;
+        if (!input.success) {
+          console.warn('[restaurant-auth] rejected=invalid-input');
+          return null;
+        }
 
         const user = await prisma.user.findUnique({
           where: { email: input.data.email },
@@ -35,9 +38,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         });
 
         // Generic rejection; do not disclose whether an email exists.
-        if (!user?.passwordHash || !accountCanAuthenticate(user) || (user.lockedUntil && user.lockedUntil > new Date())) return null;
+        if (!user?.passwordHash) {
+          console.warn('[restaurant-auth] rejected=missing-account-or-password');
+          return null;
+        }
+        if (!accountCanAuthenticate(user)) {
+          console.warn('[restaurant-auth] rejected=inactive-account');
+          return null;
+        }
+        if (user.lockedUntil && user.lockedUntil > new Date()) {
+          console.warn('[restaurant-auth] rejected=temporarily-locked');
+          return null;
+        }
         const valid = await bcrypt.compare(input.data.password, user.passwordHash);
         if (!valid) {
+          console.warn('[restaurant-auth] rejected=invalid-password');
           const result = await prisma.user.update({
             where: { id: user.id },
             data: { failedLogins: { increment: 1 } },

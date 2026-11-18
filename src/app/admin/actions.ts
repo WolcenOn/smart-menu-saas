@@ -2,6 +2,8 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
+import bcrypt from 'bcryptjs';
+import { canResetPassword, newTemporaryPassword, resetPasswordInput } from '@/lib/admin-password-reset';
 import { DeleteObjectsCommand } from '@aws-sdk/client-s3';
 import { getImageStorage, storageIsConfigured } from '@/lib/image-storage';
 import { adminAccountAction, canApplyAccountAction } from '@/lib/admin-account-action';
@@ -196,4 +198,40 @@ export async function permanentlyDeleteRestaurant(form: FormData) {
     });
   });
   revalidatePath('/admin');
+}
+
+export type PasswordResetResult = { error: string; password: string };
+export async function resetOwnerPassword(_previous: PasswordResetResult, form: FormData): Promise<PasswordResetResult> {
+  await requireAdminSession();
+  const input = resetPasswordInput.safeParse({
+    userId: form.get('userId'), confirmEmail: form.get('confirmEmail'),
+  });
+  if (!input.success) return { error: 'Comprueba el correo de confirmación.', password: '' };
+
+  // Display only once to the administrator, never log or persist plaintext.
+  const temporaryPassword = newTemporaryPassword();
+  const passwordHash = await bcrypt.hash(temporaryPassword, 12);
+  const updated = await prisma.$transaction(async tx => {
+    const user = await tx.user.findUnique({
+      where: { id: input.data.userId },
+      select: { id: true, email: true, suspendedAt: true, deletedAt: true },
+    });
+    if (!user || !canResetPassword(user, input.data.confirmEmail)) return false;
+    const result = await tx.user.updateMany({
+      where: { id: user.id, email: user.email, suspendedAt: null, deletedAt: null },
+      data: { passwordHash, failedLogins: 0, lockedUntil: null },
+    });
+    if (result.count !== 1) return false;
+    await tx.session.deleteMany({ where: { userId: user.id } });
+    await tx.adminAuditEvent.create({
+      data: {
+        action: 'PASSWORD_RESET', userId: user.id, email: user.email,
+        details: 'Owner password reset by platform administrator.',
+      },
+    });
+    return true;
+  });
+  if (!updated) return { error: 'Cuenta no disponible, pausada o correo incorrecto.', password: '' };
+  revalidatePath('/admin');
+  return { error: '', password: temporaryPassword };
 }
