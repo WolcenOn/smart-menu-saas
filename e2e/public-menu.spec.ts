@@ -13,7 +13,7 @@ test('public menu displays allergen information and visible sold-out dish', asyn
 test('untrusted dish names are rendered as text, never HTML', async ({ page }) => {
   await page.goto('/r/demo-restaurante');
   await expect(page.getByText('<img src=x onerror=alert(1)>', { exact: true })).toBeVisible();
-  await expect(page.locator('article.feature img')).toHaveCount(0);
+  await expect(page.locator('article.menu-dish img')).toHaveCount(0);
 });
 
 test('invalid restaurant slugs respond with 404', async ({ page }) => {
