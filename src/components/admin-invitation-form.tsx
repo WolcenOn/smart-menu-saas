@@ -1,11 +1,13 @@
 'use client';
-import { useActionState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { createInvitation, type InviteResult } from '@/app/admin/actions';
 
 const initial: InviteResult = { error: '', path: '', email: '' };
 
 export function AdminInvitationForm() {
   const [result, action, pending] = useActionState(createInvitation, initial);
+  const [origin, setOrigin] = useState('');
+  useEffect(() => { setOrigin(window.location.origin); }, []);
   return (
     <section className="dashboard-item">
       <h2>Generar invitación</h2>
@@ -32,7 +34,7 @@ export function AdminInvitationForm() {
         <div className="admin-new-link" role="status">
           <strong>Enlace creado para {result.email}</strong>
           <p>Cópialo ahora. Por seguridad, no volverá a mostrarse al recargar.</p>
-          <input readOnly aria-label="Enlace de invitación" value={typeof window === 'undefined' ? result.path : window.location.origin + result.path} onFocus={event => event.currentTarget.select()} />
+          <input readOnly aria-label="Enlace de invitación" value={origin + result.path} onFocus={event => event.currentTarget.select()} />
         </div>
       ) : null}
     </section>

@@ -30,5 +30,14 @@ export async function startAdminSession() {
 
 export async function endAdminSession() {
   const jar = await cookies();
-  jar.delete(COOKIE_NAME);
+  // Expire the cookie on the same path used when it was created.
+  // cookies().delete() defaults to '/', which would leave '/admin' active.
+  jar.set(COOKIE_NAME, '', {
+    path: '/admin',
+    maxAge: 0,
+    expires: new Date(0),
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: process.env.NODE_ENV === 'production',
+  });
 }

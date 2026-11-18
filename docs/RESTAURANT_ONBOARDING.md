@@ -1,27 +1,23 @@
-# Alta sencilla para restaurantes (piloto)
+# Alta de restaurantes mediante invitaciones
 
-## Experiencia de usuario
+## Propietario
+1. El administrador crea un enlace individual para el correo invitado en `/admin`.
+2. El restaurante abre el enlace `/registro-restaurante/<token>` antes de que caduque.
+3. El propietario introduce nombre del restaurante, su nombre y contraseña. El correo está vinculado a la invitación.
+4. PostgreSQL consume el token **una sola vez** en la misma transacción que crea User, Restaurant, OWNER y carta inicial.
+5. Auth.js inicia sesión automáticamente y abre `/panel`.
 
-- **/registro-restaurante**: un formulario independiente con nombre del restaurante, nombre del propietario, email, contraseña y código de invitación.
-- **/acceso**: únicamente inicio de sesión para propietarios y personal existente.
-- **/panel**: al entrar, el propietario ve su restaurante, su tema y el editor de cartas.
-- La creación inicial de restaurante, carta publicada vacía, categoría inicial, usuario y membresía OWNER ocurre en **una sola transacción PostgreSQL**.
-- La dirección pública se genera automáticamente con un slug y sufijo aleatorio. No hay que tocar SQL ni ejecutar bootstrap manual.
-- Se reutiliza Auth.js Credentials; OAuth podrá activarse posteriormente sin cambiar el modelo de restaurante.
+El enlace no puede reutilizarse y nunca se almacena sin hashing. El menú `/registro-restaurante` sin token informa de que se requiere invitación.
 
-## Configuración Railway
+## Administración
+- `/admin/acceso`: acceso con clave larga y cookie independiente de los restaurantes, válida 1 hora.
+- `/admin`: crear invitación con caducidad de 1 a 168 horas, copiarla una vez y revocar invitaciones pendientes.
+- La clave nunca se muestra al restaurante ni se guarda en PostgreSQL.
 
-El servicio web necesita las variables existentes: DATABASE_URL, AUTH_SECRET, AUTH_TRUST_HOST=true bajo proxy HTTPS confiable.
+## Railway
+Conservar `DATABASE_URL`, `AUTH_SECRET` y `AUTH_TRUST_HOST=true` detrás del proxy HTTPS. Añadir `ADMIN_ACCESS_KEY` (secreto aleatorio, por ejemplo `openssl rand -hex 48`). Eliminar `RESTAURANT_SIGNUP_CODE`, que ya no es válido.
 
-**Nueva variable obligatoria para abrir el registro del piloto:**
-- `RESTAURANT_SIGNUP_CODE`: secreto aleatorio de **al menos 32 caracteres**. Generarlo con `openssl rand -hex 32` y guardarlo **solo** en Railway Variables. Compartir el código individualmente con los restaurantes invitados, no publicarlo en el frontend ni en GitHub.
+Build: `npm run build`, predeploy: `npm run db:migrate`, start: `npm run start`. Es necesaria la migración de `RestaurantInvitation`.
 
-Si no está configurada, el formulario muestra que las altas requieren invitación y **no crea cuentas**. No utilizar claves compartidas con poca entropía.
-
-## Restricciones y futuro
-
-Este código compartido es una solución temporal de **piloto cerrado**, no un sistema multiusuario de invitaciones. Antes de abrir el registro al público debemos añadir verificación de correo, límite por IP y cuenta, límites de creación de establecimientos y recuperación de contraseña. No hay validación comercial ni prueba automática de titularidad del restaurante.
-
-Durante el piloto, las cuentas nuevas solo pueden administrar los restaurantes creados por ellas, no los existentes. Las autorizaciones se verifican en PostgreSQL desde cada operación del servidor.
-
-Las variables de Railway se actualizan en Settings → Variables; después se aplica el despliegue correspondiente. No hace falta cambiar la rama de despliegue (`main`) ni registrar Google OAuth.
+## Límites del piloto
+Implementar rate limiting/WAF por IP, notificaciones por correo y verificación de titularidad del email antes del registro público. Los enlaces son credenciales: compartir en privado y evitar guardar rutas completas en herramientas de analítica o logs públicos. Para instrucciones ampliadas, ver `docs/INVITATIONS.md`.
