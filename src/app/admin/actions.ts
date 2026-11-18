@@ -160,6 +160,13 @@ export async function permanentlyDeleteRestaurant(form: FormData) {
       // Only delete accounts exclusively belonging to the removed restaurant.
       await tx.user.deleteMany({ where: { id: member.userId, memberships: { none: {} } } });
     }
+    // Remove the personal identifiers of accounts exclusive to this tenant
+    // from older administrative logs, while retaining operation timestamps.
+    const orphanedUsers = restaurant.members.map(member => member.userId);
+    await tx.adminAuditEvent.updateMany({
+      where: { userId: { in: orphanedUsers } },
+      data: { userId: null, email: 'redacted', details: 'Prior account action - erased client' },
+    });
     await tx.adminAuditEvent.create({
       data: {
         action: 'RESTAURANT_HARD_DELETED',
