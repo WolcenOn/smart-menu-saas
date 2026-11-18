@@ -6,7 +6,7 @@ test('public menu displays allergen information and visible sold-out dish', asyn
   await expect(page.getByRole('heading', { name: 'Croquetas caseras' })).toBeVisible();
   await expect(page.getByText('Cereales con gluten')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Arroz con bogavante' })).toBeVisible();
-  await expect(page.getByText('Agotado', { exact: true })).toBeVisible();
+  await expect(page.getByRole('article', { name: 'Arroz con bogavante' }).getByText('Agotado', { exact: true })).toBeVisible();
   await expect(page.getByText('Plato no revisado')).toHaveCount(0);
 });
 
