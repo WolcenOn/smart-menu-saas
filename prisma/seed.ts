@@ -71,6 +71,16 @@ async function main() {
     update: { passwordHash: hash, failedLogins: 0, lockedUntil: null },
     create: { email: 'e2e-owner@example.invalid', name: 'E2E Owner', passwordHash: hash },
   });
+  const waiter = await prisma.user.upsert({
+    where: { email: 'e2e-waiter@example.invalid' },
+    update: { passwordHash: hash, failedLogins: 0, lockedUntil: null },
+    create: { email: 'e2e-waiter@example.invalid', name: 'E2E Waiter', passwordHash: hash },
+  });
+  await prisma.restaurantMember.upsert({
+    where: { restaurantId_userId: { restaurantId: restaurant.id, userId: waiter.id } },
+    create: { restaurantId: restaurant.id, userId: waiter.id, role: 'WAITER' },
+    update: { role: 'WAITER' },
+  });
   await prisma.restaurantMember.upsert({
     where: { restaurantId_userId: { restaurantId: restaurant.id, userId: owner.id } },
     create: { restaurantId: restaurant.id, userId: owner.id, role: 'OWNER' },
