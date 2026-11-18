@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { requireAdminSession } from '@/lib/admin-session';
 import { accountStatus } from '@/lib/account-status';
 import { AdminInvitationForm } from '@/components/admin-invitation-form';
+import { AdminPasswordReset } from '@/components/admin-password-reset';
 import { logoutAdmin, revokeInvitation, changeAccountAccess, permanentlyDeleteRestaurant } from './actions';
 
 export const dynamic = 'force-dynamic';
@@ -21,7 +22,7 @@ export default async function AdminHomePage() {
     prisma.user.findMany({
       orderBy: { email: 'asc' }, take: 200,
       select: {
-        id: true, name: true, email: true, suspendedAt: true, deletedAt: true, lockedUntil: true,
+        id: true, name: true, email: true, suspendedAt: true, deletedAt: true, lockedUntil: true, failedLogins: true, passwordHash: true,
         memberships: {
           select: {
             role: true, createdAt: true,
@@ -152,6 +153,8 @@ export default async function AdminHomePage() {
                       </div>
                       <p>{user.email}</p>
                       {status === 'ACTIVE' && user.lockedUntil && user.lockedUntil > now ? <small>Bloqueada temporalmente hasta {user.lockedUntil.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}</small> : null}
+                      {status === 'ACTIVE' && !user.passwordHash ? <small>Sin contraseña configurada.</small> : null}
+                      {status === 'ACTIVE' && user.failedLogins > 0 ? <small>Intentos incorrectos recientes: {user.failedLogins}</small> : null}
                       {user.memberships.length === 0 ? <small>Sin restaurante asignado</small> : (
                         <div className="admin-user-restaurants">
                           {user.memberships.map(member => (
@@ -180,6 +183,7 @@ export default async function AdminHomePage() {
                             {status === 'PAUSED' ? 'Reactivar acceso' : 'Pausar acceso'}
                           </button>
                         </form>
+                        {status === 'ACTIVE' ? <AdminPasswordReset userId={user.id} email={user.email} /> : null}
                         <details className="admin-remove-details">
                           <summary>Eliminar acceso definitivamente</summary>
                           <p>Se desactivará la cuenta y no podrá volver a iniciar sesión. La carta y el historial se conservarán.</p>
@@ -207,7 +211,7 @@ export default async function AdminHomePage() {
             <div className="admin-event-list">
               {events.map(event => (
                 <div key={event.id}>
-                  <span>{event.action === 'ACCOUNT_PAUSED' ? 'Pausado' : event.action === 'ACCOUNT_RESUMED' ? 'Reactivado' : event.action === 'ACCOUNT_ACCESS_REMOVED' ? 'Acceso eliminado' : event.action === 'ACCOUNT_UNLOCKED' ? 'Desbloqueado' : event.action}</span>
+                  <span>{event.action === 'ACCOUNT_PAUSED' ? 'Pausado' : event.action === 'ACCOUNT_RESUMED' ? 'Reactivado' : event.action === 'ACCOUNT_ACCESS_REMOVED' ? 'Acceso eliminado' : event.action === 'ACCOUNT_UNLOCKED' ? 'Desbloqueado' : event.action === 'PASSWORD_RESET' ? 'Contraseña restablecida' : event.action}</span>
                   <strong>{event.email}</strong>
                   <small>{event.createdAt.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}</small>
                 </div>

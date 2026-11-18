@@ -87,3 +87,52 @@ test('administrator can pause, restore and permanently remove account access whi
     await verification.$disconnect();
   }
 });
+
+test('admin can restore access to an existing owner without replacing their restaurant', async ({ page }) => {
+  const db = new PrismaClient();
+  const suffix = crypto.randomUUID().slice(0, 8);
+  const email = 'owner-recovery-' + suffix + '@example.invalid';
+  const restaurantName = 'Recuperación ' + suffix;
+  const oldPassword = 'InitialOwnerPassword2026!';
+  const user = await db.user.create({
+    data: {
+      name: 'Owner Recovery',
+      email,
+      passwordHash: await bcrypt.hash(oldPassword, 12),
+      lockedUntil: new Date(Date.now() + 15 * 60000),
+      memberships: { create: {
+        role: 'OWNER',
+        restaurant: { create: { slug: 'recovery-' + suffix, name: restaurantName } },
+      } },
+    }, select: { id: true },
+  });
+  await db.$disconnect();
+
+  await page.goto('/admin/acceso');
+  await page.getByLabel('Clave de administración').fill(adminKey);
+  await page.getByRole('button', { name: 'Entrar en administración' }).click();
+  await expect(page).toHaveURL(/\/admin$/);
+  const row = page.getByRole('article', { name: 'Cuenta de ' + email });
+  await expect(row.getByText(restaurantName)).toBeVisible();
+  await row.getByText('Recuperar acceso · contraseña nueva').click();
+  await row.getByPlaceholder(email).fill(email);
+  await row.getByRole('button', { name: 'Generar contraseña nueva' }).click();
+  const temporary = await row.getByLabel('Nueva contraseña del propietario').inputValue();
+  expect(temporary.length).toBeGreaterThanOrEqual(40);
+
+  await page.goto('/acceso');
+  await page.getByLabel('Correo electrónico').fill(email);
+  await page.getByLabel('Contraseña').fill(temporary);
+  await page.getByRole('button', { name: 'Entrar al panel' }).click();
+  await expect(page).toHaveURL(/\/panel(?:\?|$)/);
+  await expect(page.getByRole('heading', { name: restaurantName })).toBeVisible();
+
+  const check = new PrismaClient();
+  try {
+    const recovered = await check.user.findUnique({ where: { id: user.id } });
+    expect(recovered?.lockedUntil).toBeNull();
+    expect(recovered?.failedLogins).toBe(0);
+    expect(await bcrypt.compare(oldPassword, recovered!.passwordHash!)).toBe(false);
+    expect(await check.adminAuditEvent.count({ where: { userId: user.id, action: 'PASSWORD_RESET' } })).toBe(1);
+  } finally { await check.$disconnect(); }
+});
