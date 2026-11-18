@@ -18,7 +18,8 @@ async function issue(page: import('@playwright/test').Page, email: string, hours
   await page.getByLabel('Caducidad').selectOption(hours);
   await page.getByRole('button', { name: 'Crear invitación' }).click();
   const url = await page.getByLabel('Enlace de invitación').inputValue();
-  expect(url).toContain('/registro-restaurante/');
+  expect(url).toMatch(/^https?:\/\/[^/]+\/registro-restaurante\/[a-f0-9]{64}$/);
+  await expect(page.getByRole('link', { name: 'Abrir invitación y comprobar' })).toHaveAttribute('href', /\/registro-restaurante\/[a-f0-9]{64}$/);
   return url;
 }
 
