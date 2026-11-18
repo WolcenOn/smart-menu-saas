@@ -16,8 +16,11 @@ async function adminLogin(page: import('@playwright/test').Page) {
 async function issue(page: import('@playwright/test').Page, email: string, hours = '48') {
   await page.getByLabel('Correo del propietario').fill(email);
   await page.getByLabel('Caducidad').selectOption(hours);
+  const linkField = page.getByLabel('Enlace de invitación');
+  const previous = await linkField.count() ? await linkField.inputValue() : '';
   await page.getByRole('button', { name: 'Crear invitación' }).click();
-  const url = await page.getByLabel('Enlace de invitación').inputValue();
+  await expect(linkField).not.toHaveValue(previous);
+  const url = await linkField.inputValue();
   expect(url).toMatch(/^https?:\/\/[^/]+\/registro-restaurante\/[a-f0-9]{64}$/);
   await expect(page.getByRole('link', { name: 'Abrir invitación y comprobar' })).toHaveAttribute('href', /\/registro-restaurante\/[a-f0-9]{64}$/);
   return url;
@@ -124,6 +127,6 @@ test('admin cannot invite an existing account to create a duplicate restaurant',
   await adminLogin(page);
   await page.getByLabel('Correo del propietario').fill('e2e-owner@example.invalid');
   await page.getByRole('button', { name: 'Crear invitación' }).click();
-  await expect(page.getByRole('alert')).toContainText('ya pertenece a una cuenta');
+  await expect(page.locator('p.auth-alert[role="alert"]')).toContainText('ya pertenece a una cuenta');
   await expect(page.getByLabel('Enlace de invitación')).toHaveCount(0);
 });
