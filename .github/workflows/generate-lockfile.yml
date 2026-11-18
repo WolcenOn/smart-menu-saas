@@ -1,0 +1,21 @@
+name: Generate dependency lockfile
+on:
+  pull_request:
+    paths:
+      - .github/workflows/generate-lockfile.yml
+permissions:
+  contents: read
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - uses: actions/upload-artifact@v7
+        with:
+          name: package-lock-generated
+          path: package-lock.json
+          retention-days: 3
