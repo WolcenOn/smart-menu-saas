@@ -143,6 +143,13 @@ test('invalid registration password preserves invitation and explains the requir
   await page.getByRole('button', { name: 'Crear restaurante y acceder' }).click();
   await expect(page.getByLabel('Contraseña')).toHaveAttribute('pattern', /\(\?=\.\*\[A-Z\]/);
 
+  // Bypass the browser constraint to verify the server still refuses a weak
+  // password while preserving the same pending invitation and showing why.
+  await page.locator('form.dashboard-theme-form').evaluate(form => { (form as HTMLFormElement).noValidate = true; });
+  await page.getByRole('button', { name: 'Crear restaurante y acceder' }).click();
+  await expect(page).toHaveURL(/\/registro-restaurante\/[a-f0-9]{64}\?error=password/);
+  await expect(page.locator('p.auth-alert[role="alert"]')).toContainText('mayúscula');
+
   const db = new PrismaClient();
   try {
     const token = inviteUrl.split('/').pop()!;
