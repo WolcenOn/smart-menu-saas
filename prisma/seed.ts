@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 const allergens = [
@@ -17,13 +18,13 @@ async function main() {
   }
 
   // E2E only: this deletes a fixture restaurant. Never enable outside disposable CI databases.
-  if (process.env.E2E_TEST_SEED !== '1') return;
+  if (process.env.E2E_TEST_SEED !== '1' || process.env.CI !== 'true') return;
 
   const slug = 'demo-restaurante';
   const old = await prisma.restaurant.findUnique({ where: { slug }, select: { id: true } });
   if (old) await prisma.restaurant.delete({ where: { id: old.id } });
 
-  await prisma.restaurant.create({
+  const restaurant = await prisma.restaurant.create({
     data: {
       slug,
       name: 'Restaurante de demostración',
@@ -62,6 +63,28 @@ async function main() {
         }] },
       }] },
     },
+  });
+  // Integration-test credentials exist only in disposable GitHub Actions databases.
+  const hash = await bcrypt.hash('E2e-Only-Strong-Password-2026!', 10);
+  const owner = await prisma.user.upsert({
+    where: { email: 'e2e-owner@example.invalid' },
+    update: { passwordHash: hash, failedLogins: 0, lockedUntil: null },
+    create: { email: 'e2e-owner@example.invalid', name: 'E2E Owner', passwordHash: hash },
+  });
+  const waiter = await prisma.user.upsert({
+    where: { email: 'e2e-waiter@example.invalid' },
+    update: { passwordHash: hash, failedLogins: 0, lockedUntil: null },
+    create: { email: 'e2e-waiter@example.invalid', name: 'E2E Waiter', passwordHash: hash },
+  });
+  await prisma.restaurantMember.upsert({
+    where: { restaurantId_userId: { restaurantId: restaurant.id, userId: waiter.id } },
+    create: { restaurantId: restaurant.id, userId: waiter.id, role: 'WAITER' },
+    update: { role: 'WAITER' },
+  });
+  await prisma.restaurantMember.upsert({
+    where: { restaurantId_userId: { restaurantId: restaurant.id, userId: owner.id } },
+    create: { restaurantId: restaurant.id, userId: owner.id, role: 'OWNER' },
+    update: { role: 'OWNER' },
   });
 }
 
