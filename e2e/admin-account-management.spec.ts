@@ -115,7 +115,7 @@ test('admin can restore access to an existing owner without replacing their rest
   const row = page.getByRole('article', { name: 'Cuenta de ' + email });
   await expect(row.getByText(restaurantName)).toBeVisible();
   await row.getByText('Recuperar acceso · contraseña nueva').click();
-  await row.getByPlaceholder(email).fill(email);
+  await row.locator('input[name="confirmEmail"]').first().fill(email);
   await row.getByRole('button', { name: 'Generar contraseña nueva' }).click();
   const temporary = await row.getByLabel('Nueva contraseña del propietario').inputValue();
   expect(temporary.length).toBeGreaterThanOrEqual(40);
