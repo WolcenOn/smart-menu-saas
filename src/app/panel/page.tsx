@@ -63,7 +63,7 @@ export default async function DashboardPage() {
                     <p className="dashboard-onboarding-hint">Ya tienes platos en borrador. Revisa los alérgenos y publícalos para que aparezcan en la carta.</p>
                   ) : null}
                   <div className="dashboard-card-actions">
-                    <Link href={'/panel/restaurantes/' + restaurant.id} className="editor-primary editor-link">Gestionar carta <span aria-hidden="true">→</span></Link>
+                    <Link href={'/panel/restaurantes/' + restaurant.id} className="editor-primary editor-link">Editar carta <span aria-hidden="true">→</span></Link>
                     <Link href={'/r/' + restaurant.slug} className="dashboard-secondary-link" target="_blank" rel="noopener noreferrer">Ver carta pública <span aria-hidden="true">↗</span></Link>
                   </div>
                   {canPerform(role, 'manageTheme') ? (
@@ -93,7 +93,7 @@ export default async function DashboardPage() {
                       </form>
                     </details>
                   ) : (
-                    <p className="dashboard-permissions-hint">Tu perfil permite actualizar la disponibilidad. La apariencia de la carta la gestiona el propietario o editor.</p>
+                    <p className="dashboard-permissions-hint">Tu cuenta permite gestionar disponibilidad, pero el diseño de la carta lo cambia el propietario o editor.</p>
                   )}
                 </article>
               ); })}
