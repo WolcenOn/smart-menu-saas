@@ -23,6 +23,8 @@ jobs:
       DATABASE_URL: postgresql://test_user:test_password_only@127.0.0.1:5432/smart_menu_test
       E2E_TEST_SEED: '1'
       CI: 'true'
+      AUTH_SECRET: 'ci-only-long-auth-secret-not-for-production-123456789'
+      AUTH_TRUST_HOST: 'true'
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
