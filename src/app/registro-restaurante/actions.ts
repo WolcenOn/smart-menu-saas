@@ -1,6 +1,7 @@
 'use server';
 
 import { randomBytes } from 'node:crypto';
+import { signIn } from '@/auth';
 import bcrypt from 'bcryptjs';
 import { redirect } from 'next/navigation';
 import { Prisma } from '@prisma/client';
@@ -59,7 +60,7 @@ export async function registerRestaurant(form: FormData) {
     throw error;
   }
 
-  // The new user logs in using the existing Auth.js credentials flow.
-  // No custom auth cookies or ad hoc JWTs are created during registration.
-  redirect('/acceso?created=1');
+  // Sign in with Auth.js after the successful atomic creation: no second form.
+  // Existing session and OAuth migration compatibility are preserved.
+  await signIn('credentials', { email: input.data.email, password: input.data.password, redirectTo: '/panel' });
 }

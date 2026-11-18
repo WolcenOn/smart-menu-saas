@@ -16,11 +16,6 @@ test('restaurant owner registers from separate entry and manages only their rest
   await page.getByLabel('Contraseña').fill(password);
   await page.getByLabel('Código de invitación al piloto').fill(inviteCode);
   await page.getByRole('button', { name: 'Crear mi restaurante' }).click();
-  await expect(page).toHaveURL(/\/acceso\?created=1/);
-
-  await page.getByLabel('Correo electrónico').fill(email);
-  await page.getByLabel('Contraseña').fill(password);
-  await page.getByRole('button', { name: 'Entrar al panel' }).click();
   await expect(page).toHaveURL(/\/panel/);
   await expect(page.getByRole('heading', { name })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Restaurante de demostración' })).toHaveCount(0);

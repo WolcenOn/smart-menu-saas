@@ -4,7 +4,7 @@ import { z } from 'zod';
 export const registrationSchema = z.object({
   restaurantName: z.string().trim().min(2).max(160),
   ownerName: z.string().trim().min(2).max(120),
-  email: z.email().max(254).transform(value => value.trim().toLowerCase()),
+  email: z.string().trim().toLowerCase().pipe(z.email().max(254)),
   password: z.string().min(14).max(100)
     .regex(/[a-z]/, 'Incluye una minúscula')
     .regex(/[A-Z]/, 'Incluye una mayúscula')
