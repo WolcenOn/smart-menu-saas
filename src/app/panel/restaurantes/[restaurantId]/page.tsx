@@ -49,6 +49,10 @@ export default async function RestaurantEditorPage({ params }: Props) {
   const role = restaurant.members[0]?.role;
   const canEdit = canPerform(role, 'manageMenu');
   const canToggle = canPerform(role, 'toggleAvailability');
+  const allDishes = restaurant.menus.flatMap(menu => menu.categories.flatMap(category => category.dishes));
+  const publishedCount = allDishes.filter(dish => dish.status === 'PUBLISHED').length;
+  const draftCount = allDishes.filter(dish => dish.status !== 'PUBLISHED').length;
+  const soldOutCount = allDishes.filter(dish => dish.status === 'PUBLISHED' && dish.availability === 'SOLD_OUT').length;
   const allergens = await prisma.allergen.findMany({
     where: { id: { in: [...ALLERGEN_IDS] } },
     select: { id: true, name: true }, orderBy: { name: 'asc' },
@@ -63,20 +67,52 @@ export default async function RestaurantEditorPage({ params }: Props) {
       <section className="dashboard-body editor-page">
         <p className="auth-overline">GESTIÓN DE LA CARTA</p>
         <div className="editor-heading">
-          <div><h1>{restaurant.name}</h1><p>Actualiza tu carta y controla rápidamente lo que queda en cocina.</p></div>
-          <Link href={'/r/' + restaurant.slug} className="site-button site-button--solid">Ver carta ↗</Link>
+          <div><h1>{restaurant.name}</h1><p>Edita los platos, comprueba sus alérgenos y actualiza lo que queda en cocina.</p></div>
+          <Link href={'/r/' + restaurant.slug} className="site-button site-button--solid" target="_blank" rel="noopener noreferrer">Vista del cliente ↗</Link>
         </div>
-        <div className="editor-hint"><strong>Importante:</strong> los platos agotados permanecen visibles. Los platos nuevos solo se publican cuando confirmas que has revisado su información alimentaria.</div>
+
+        <div className="editor-overview" aria-label="Resumen de tu carta">
+          <div><strong>{allDishes.length}</strong><span>Platos totales</span></div>
+          <div><strong>{publishedCount}</strong><span>Publicados</span></div>
+          <div><strong>{draftCount}</strong><span>Por revisar</span></div>
+          <div><strong>{soldOutCount}</strong><span>Agotados</span></div>
+        </div>
+        {allDishes.length === 0 ? (
+          <div className="editor-start-card">
+            <span aria-hidden="true" className="editor-start-icon">✳</span>
+            <div>
+              <strong>Vamos a preparar tu primera carta</strong>
+              <p>Abre una categoría y pulsa «Añadir plato o bebida». Completa el precio y revisa los alérgenos antes de publicarlo.</p>
+            </div>
+            <a href="#categorias" className="editor-primary editor-link">Empezar <span aria-hidden="true">↓</span></a>
+          </div>
+        ) : (
+          <div className="editor-hint"><strong>Consejo:</strong> los platos agotados siguen visibles con su estado. Los borradores se publican cuando confirmas la revisión de ingredientes y alérgenos.</div>
+        )}
+        {restaurant.menus.some(menu => menu.categories.length > 1) ? (
+          <nav className="editor-category-nav" aria-label="Ir a una categoría">
+            <span>Categorías</span>
+            {restaurant.menus.flatMap(menu => menu.categories).map(category => (
+              <a key={category.id} href={'#categoria-' + category.id}>{category.name}</a>
+            ))}
+          </nav>
+        ) : null}
         {restaurant.menus.length === 0 ? <p>Este restaurante todavía no tiene una carta. Solicita su creación al administrador.</p> : null}
         {restaurant.menus.map(menu => (
-          <section key={menu.id} className="editor-menu" aria-label={menu.name}>
+          <section key={menu.id} className="editor-menu" aria-label={menu.name} id="categorias">
             <div className="editor-section-title">
               <div><span className="dashboard-role">CARTA {menu.published ? 'PUBLICADA' : 'BORRADOR'}</span><h2>{menu.name}</h2></div>
               <span>{menu.categories.reduce((count, category) => count + category.dishes.length, 0)} productos</span>
             </div>
             {menu.categories.map(category => (
-              <section key={category.id} className="editor-category" aria-label={category.name}>
+              <section key={category.id} className="editor-category" aria-label={category.name} id={'categoria-' + category.id}>
                 <div className="editor-section-title"><h3>{category.name}</h3><span>{category.dishes.length} platos</span></div>
+                {category.dishes.length === 0 ? (
+                  <div className="editor-category-empty">
+                    <span aria-hidden="true">✦</span>
+                    <div><strong>Esta categoría aún está vacía</strong><p>Añade el primer producto para empezar a dar forma a tu carta.</p></div>
+                  </div>
+                ) : null}
                 <div className="editor-dishes">
                   {category.dishes.map(dish => (
                     <article key={dish.id} className="editor-dish" aria-label={'Gestión de ' + dish.name}>
@@ -109,7 +145,7 @@ export default async function RestaurantEditorPage({ params }: Props) {
                       {canEdit ? <DishPhotoUploader dishId={dish.id} /> : null}
                       {canEdit ? (
                         <details className="editor-details">
-                          <summary>Editar plato y alérgenos</summary>
+                          <summary>Editar información y alérgenos</summary>
                           <form action={editDish} className="editor-form">
                             <input type="hidden" name="restaurantId" value={restaurant.id} />
                             <input type="hidden" name="dishId" value={dish.id} />
