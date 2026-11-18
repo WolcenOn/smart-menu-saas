@@ -29,3 +29,11 @@
 .dish-photo-upload .editor-primary[disabled]{opacity:.6;cursor:progress}
 .dish-photo-feedback{color:#506953;font-size:11px;line-height:1.4;min-height:15px}
 @media(max-width:650px){.menu-dishes--list .menu-photo{width:100%;height:170px;flex:auto}}
+
+/* Separate owner onboarding. Same typography and visual rhythm as access. */
+.auth-panel--wide{max-width:560px}.auth-panel--wide .auth-overline{margin-top:26px}
+.auth-panel--wide .dashboard-theme-form{gap:13px}
+.form-hint{margin:-5px 0 0!important;font-size:11px;color:#65756a!important;line-height:1.4!important}
+.registration-switch{border-top:1px solid #e4e9e1;margin-top:25px;padding-top:21px;font-size:14px}
+.registration-switch a{font-weight:800;color:#285c3a}
+.auth-success{background:#e4f3e8;border:1px solid #c6e0c9;color:#265a35!important;border-radius:12px;padding:13px;font-size:14px}

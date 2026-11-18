@@ -13,7 +13,8 @@ export default function Home() {
         <Link className="site-logo" href="/"><span className="logo-mark">✳</span> smartmenu</Link>
         <div className="site-nav-links">
           <Link href="#funciones">Características</Link>
-          <Link className="site-link-primary" href="/demo/temas">Ver diseños →</Link>
+          <Link href="/acceso">Acceder</Link>
+          <Link className="site-link-primary" href="/registro-restaurante">Crear restaurante →</Link>
         </div>
       </nav>
       <section className="site-hero">
@@ -22,8 +23,8 @@ export default function Home() {
           <h1>Tu carta,<br/><em>tu esencia.</em></h1>
           <p className="site-lead">Una carta digital tan especial como tu restaurante. Bonita, fácil de mantener y preparada para cambiar al ritmo de tu cocina.</p>
           <div className="site-actions">
-            <Link className="site-button site-button--solid" href="/demo/temas">Explorar los diseños ↗</Link>
-            <a className="site-button site-button--outline" href="#funciones">Descubre cómo funciona</a>
+            <Link className="site-button site-button--solid" href="/registro-restaurante">Crear mi restaurante ↗</Link>
+            <Link className="site-button site-button--outline" href="/demo/temas">Ver diseños de carta</Link>
           </div>
         </div>
         <div className="hero-poster" aria-label="Ejemplo decorativo de carta digital">
