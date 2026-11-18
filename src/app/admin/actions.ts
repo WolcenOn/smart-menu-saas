@@ -58,7 +58,7 @@ export async function changeAccountAccess(form: FormData) {
   await prisma.$transaction(async tx => {
     const user = await tx.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, suspendedAt: true, deletedAt: true },
+      select: { id: true, email: true, suspendedAt: true, deletedAt: true, lockedUntil: true },
     });
     if (!user || !canApplyAccountAction(action, user, confirmEmail)) {
       throw new Error('INVALID_ACCOUNT_STATE');
@@ -74,7 +74,9 @@ export async function changeAccountAccess(form: FormData) {
         deletedAt: null,
         ...(condition === undefined ? {} : { suspendedAt: condition }),
       },
-      data: action === 'pause'
+      data: action === 'unlock'
+        ? { failedLogins: 0, lockedUntil: null }
+        : action === 'pause'
         ? { suspendedAt: new Date() }
         : action === 'resume'
           ? { suspendedAt: null, failedLogins: 0, lockedUntil: null }
@@ -87,7 +89,7 @@ export async function changeAccountAccess(form: FormData) {
     await tx.session.deleteMany({ where: { userId } });
     await tx.adminAuditEvent.create({
       data: {
-        action: action === 'pause' ? 'ACCOUNT_PAUSED' : action === 'resume' ? 'ACCOUNT_RESUMED' : 'ACCOUNT_ACCESS_REMOVED',
+        action: action === 'pause' ? 'ACCOUNT_PAUSED' : action === 'resume' ? 'ACCOUNT_RESUMED' : action === 'unlock' ? 'ACCOUNT_UNLOCKED' : 'ACCOUNT_ACCESS_REMOVED',
         userId, email: user.email,
         details: action === 'remove' ? 'Access removed; restaurant history retained.' : 'Access changed by administrator.',
       },

@@ -16,6 +16,9 @@ describe('administrative account actions', () => {
     expect(canApplyAccountAction('resume', paused)).toBe(true);
     expect(canApplyAccountAction('pause', paused)).toBe(false);
     expect(canApplyAccountAction('resume', { ...active, deletedAt: new Date() })).toBe(false);
+    expect(canApplyAccountAction('unlock', { ...active, lockedUntil: new Date(Date.now() + 60000) })).toBe(true);
+    expect(canApplyAccountAction('unlock', active)).toBe(false);
+    expect(canApplyAccountAction('unlock', { ...paused, lockedUntil: new Date(Date.now() + 60000) })).toBe(false);
   });
   it('rejects unknown actions and injected parameters', () => {
     const valid = { userId: 'cjld2cjxh0000qzrmn831i7rn', action: 'pause' };

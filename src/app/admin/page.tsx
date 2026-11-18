@@ -21,7 +21,7 @@ export default async function AdminHomePage() {
     prisma.user.findMany({
       orderBy: { email: 'asc' }, take: 200,
       select: {
-        id: true, name: true, email: true, suspendedAt: true, deletedAt: true,
+        id: true, name: true, email: true, suspendedAt: true, deletedAt: true, lockedUntil: true,
         memberships: {
           select: {
             role: true, createdAt: true,
@@ -109,6 +109,7 @@ export default async function AdminHomePage() {
                         </span>
                       </div>
                       <p>{user.email}</p>
+                      {status === 'ACTIVE' && user.lockedUntil && user.lockedUntil > now ? <small>Bloqueada temporalmente hasta {user.lockedUntil.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}</small> : null}
                       {user.memberships.length === 0 ? <small>Sin restaurante asignado</small> : (
                         <div className="admin-user-restaurants">
                           {user.memberships.map(member => (
@@ -123,6 +124,13 @@ export default async function AdminHomePage() {
                     </div>
                     {status !== 'REMOVED' ? (
                       <div className="admin-account-actions">
+                        {status === 'ACTIVE' && user.lockedUntil && user.lockedUntil > now ? (
+                          <form action={changeAccountAccess}>
+                            <input type="hidden" name="userId" value={user.id} />
+                            <input type="hidden" name="accessAction" value="unlock" />
+                            <button className="dashboard-logout" type="submit">Desbloquear cuenta</button>
+                          </form>
+                        ) : null}
                         <form action={changeAccountAccess}>
                           <input type="hidden" name="userId" value={user.id} />
                           <input type="hidden" name="accessAction" value={status === 'PAUSED' ? 'resume' : 'pause'} />
@@ -157,7 +165,7 @@ export default async function AdminHomePage() {
             <div className="admin-event-list">
               {events.map(event => (
                 <div key={event.id}>
-                  <span>{event.action === 'ACCOUNT_PAUSED' ? 'Pausado' : event.action === 'ACCOUNT_RESUMED' ? 'Reactivado' : event.action === 'ACCOUNT_ACCESS_REMOVED' ? 'Acceso eliminado' : event.action}</span>
+                  <span>{event.action === 'ACCOUNT_PAUSED' ? 'Pausado' : event.action === 'ACCOUNT_RESUMED' ? 'Reactivado' : event.action === 'ACCOUNT_ACCESS_REMOVED' ? 'Acceso eliminado' : event.action === 'ACCOUNT_UNLOCKED' ? 'Desbloqueado' : event.action}</span>
                   <strong>{event.email}</strong>
                   <small>{event.createdAt.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}</small>
                 </div>

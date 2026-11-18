@@ -12,6 +12,7 @@ El administrador entra en `/admin/acceso` mediante `ADMIN_ACCESS_KEY`, y gestion
 ## Acciones
 - **Pausar**: bloquea futuros logins y todas las rutas privadas incluso para sesiones JWT existentes.
 - **Reactivar**: permite entrar de nuevo con las credenciales anteriores y reinicia contadores de bloqueo.
+- **Desbloquear**: si una cuenta ha alcanzado el límite de intentos incorrectos, se puede desbloquear sin modificar la contraseña ni la membresía.
 - **Eliminar acceso**: requiere escribir el correo completo, desactiva el acceso permanentemente, borra el hash de la contraseña y elimina vínculos OAuth de esa cuenta. No borra las cartas, restaurantes ni el historial para evitar pérdida accidental de datos. Una cuenta archivada no puede reactivarse desde este panel.
 - Toda operación exige una sesión administrativa válida, comprueba transiciones en PostgreSQL y crea `AdminAuditEvent` en la misma transacción.
 
