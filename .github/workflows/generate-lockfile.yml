@@ -1,4 +1,4 @@
-name: Generate complete dependency lockfile
+name: Regenerate full lockfile with S3 dependencies
 on:
   pull_request:
     paths:
