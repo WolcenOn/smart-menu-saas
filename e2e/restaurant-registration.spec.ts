@@ -130,3 +130,43 @@ test('admin cannot invite an existing account to create a duplicate restaurant',
   await expect(page.locator('p.auth-alert[role="alert"]')).toContainText('ya pertenece a una cuenta');
   await expect(page.getByLabel('Enlace de invitación')).toHaveCount(0);
 });
+
+test('invalid registration password preserves invitation and explains the requirements', async ({ page }) => {
+  await adminLogin(page);
+  const email = 'validation-' + crypto.randomUUID() + '@example.invalid';
+  const inviteUrl = await issue(page, email);
+  await page.goto(inviteUrl);
+  await page.getByLabel('Nombre del restaurante').fill('Restaurante con validación');
+  await page.getByLabel('Tu nombre').fill('Propietaria Validación');
+  // Weak password is rejected client-side; the invitation is never consumed.
+  await page.getByLabel('Contraseña').fill('todominusculasy123456');
+  await page.getByRole('button', { name: 'Crear restaurante y acceder' }).click();
+  await expect(page.getByLabel('Contraseña')).toHaveAttribute('pattern', /\(\?=\.\*\[A-Z\]/);
+
+  // Bypass the browser constraint to verify the server still refuses a weak
+  // password while preserving the same pending invitation and showing why.
+  await page.locator('form.dashboard-theme-form').evaluate(form => { (form as HTMLFormElement).noValidate = true; });
+  await page.getByRole('button', { name: 'Crear restaurante y acceder' }).click();
+  await expect(page).toHaveURL(/\/registro-restaurante\/[a-f0-9]{64}\?error=password/);
+  await expect(page.locator('p.auth-alert[role="alert"]')).toContainText('mayúscula');
+
+  const db = new PrismaClient();
+  try {
+    const token = inviteUrl.split('/').pop()!;
+    const record = await db.restaurantInvitation.findUnique({
+      where: { tokenHash: hashInvitationToken(token) },
+    });
+    expect(record?.usedAt).toBeNull();
+    expect(await db.user.findUnique({ where: { email } })).toBeNull();
+  } finally { await db.$disconnect(); }
+
+  // Server-side validation is separately unit-tested. Valid submission works
+  // with the very same invitation and creates the owner only once.
+  // Server-side validation redirects back to the form, so re-enter the
+  // non-sensitive fields after the redirect rather than expecting persistence.
+  await page.getByLabel('Nombre del restaurante').fill('Restaurante con validación');
+  await page.getByLabel('Tu nombre').fill('Propietaria Validación');
+  await page.getByLabel('Contraseña').fill(password);
+  await page.getByRole('button', { name: 'Crear restaurante y acceder' }).click();
+  await expect(page).toHaveURL(/\/acceso\?created=1/);
+});
