@@ -26,6 +26,12 @@ enum RestaurantThemePreset {
   NOIR
 }
 
+enum RestaurantRole {
+  OWNER
+  EDITOR
+  WAITER
+}
+
 enum MenuLayout {
   CARDS
   LIST
@@ -42,6 +48,7 @@ model Restaurant {
   createdAt   DateTime              @default(now())
   updatedAt   DateTime              @updatedAt
   menus       Menu[]
+  members     RestaurantMember[]
 }
 
 model Menu {
@@ -91,4 +98,62 @@ model DishAllergen {
   dish       Dish     @relation(fields: [dishId], references: [id], onDelete: Cascade)
   allergen   Allergen @relation(fields: [allergenId], references: [id], onDelete: Restrict)
   @@id([dishId, allergenId])
+}
+
+model User {
+  id            String              @id @default(cuid())
+  name          String?
+  email         String              @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  memberships   RestaurantMember[]
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  sessionToken String @unique
+  userId       String
+  expires      DateTime
+  user         User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+model RestaurantMember {
+  restaurantId String
+  userId       String
+  role         RestaurantRole @default(WAITER)
+  createdAt    DateTime       @default(now())
+  restaurant   Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([restaurantId, userId])
+  @@index([userId, role])
 }
