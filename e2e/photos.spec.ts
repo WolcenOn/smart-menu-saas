@@ -14,7 +14,7 @@ test('owners can see the secure photo uploader, disabled safely without configur
   // This CI run has no S3 credentials: authenticated users must receive a
   // clear 503 rather than a CSRF/origin rejection or a server exception.
   const pixel = Buffer.from(
-    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/R4YAAAAASUVORK5CYII=',
+    'iVBORw0KGgoAAAANSUhEUgAAAAMAAAADCAIAAADZSiLoAAAAF0lEQVR4nGM0a3VnYGBgYGBgYoABBAsAHJ8BCFkeV00AAAAASUVORK5CYII=',
     'base64',
   );
   await editor.locator('input[name="photo"]').setInputFiles({
