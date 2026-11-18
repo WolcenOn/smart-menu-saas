@@ -10,7 +10,7 @@ import { prisma } from '@/lib/db';
 // remain the same when Google OAuth is enabled later.
 const googleEnabled = Boolean(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
 const credentialsSchema = z.object({
-  email: z.email().max(254).transform(value => value.trim().toLowerCase()),
+  email: z.string().trim().toLowerCase().pipe(z.email().max(254)),
   password: z.string().min(1).max(200),
 });
 
