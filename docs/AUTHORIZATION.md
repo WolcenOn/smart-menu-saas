@@ -1,29 +1,32 @@
-# Identidad y aislamiento por restaurante — fase 1
+# Identidad y aislamiento por restaurante
 
-Se utiliza Auth.js con PrismaAdapter y sesiones persistidas en PostgreSQL.
+Se utiliza Auth.js con PrismaAdapter y sesiones en PostgreSQL.
 
-## Inicio de sesión (Google OAuth)
-Configura en Railway, **nunca en Git**:
-- `AUTH_SECRET`: secreto aleatorio largo generado con el procedimiento de Auth.js.
-- `AUTH_GOOGLE_ID` y `AUTH_GOOGLE_SECRET`: OAuth client registrado en Google Cloud.
-- `AUTH_TRUST_HOST=true` únicamente detrás del proxy HTTPS fiable de Railway.
+## Configurar OAuth en Railway
 
-URI de callback de Google OAuth: `https://TU-DOMINIO/api/auth/callback/google`.
+En las variables privadas del servicio web:
+- AUTH_SECRET: secreto criptográfico aleatorio largo según Auth.js.
+- AUTH_GOOGLE_ID y AUTH_GOOGLE_SECRET: credenciales de Google Cloud.
+- AUTH_TRUST_HOST=true solo con el proxy HTTPS fiable de Railway.
 
-La aplicación no ofrece contraseñas propias, no almacena hashes de contraseñas y no usa credenciales de prueba. Sin estas variables, no habilita el acceso OAuth.
+Registrar callback en Google Cloud: https://TU-DOMINIO/api/auth/callback/google
 
-## Roles y control de acceso
-- `OWNER`: editar carta, tema, disponibilidad y miembros.
-- `EDITOR`: editar carta, tema y disponibilidad.
-- `WAITER`: consultar panel y cambiar disponibilidad (fase posterior).
-- Usuario sin membresía: acceso denegado al restaurante.
+Sin configurar OAuth no aparece una alternativa de contraseña insegura.
 
-No se crea automáticamente un restaurante al registrarse: un operador de confianza debe asignar la membresía, mediante una futura herramienta administrativa segura. **Nunca convertir al primer usuario registrado en administrador automáticamente.**
+## Roles y permisos
 
-La verificación de pertenencia ocurre en el servidor. Para futuras mutaciones usar `requireRestaurantPermission(restaurantId, action)` en cada operación, Zod para datos, comprobaciones CSRF/Origin y condiciones de carrera. No confiar solo en redirecciones o controles visuales.
+- OWNER: puede gestionar carta, temas, disponibilidad y miembros (cuando se implemente).
+- EDITOR: puede gestionar carta, temas y disponibilidad.
+- WAITER: solo consultar panel y cambiar agotados (cuando se implemente).
 
-## Restricciones de esta fase
-- No existe editor ni API pública de escritura.
-- No hay alta de restaurante automática ni asignación de permisos desde navegador.
-- No se permite gestión de miembros todavía.
-- Revisar login OAuth, cookies y producción antes de admitir clientes reales.
+La membresía se asigna explícitamente en RestaurantMember. No existe autoasignación como propietario ni alta automática de restaurantes.
+
+## Editor de apariencia
+
+El panel muestra un formulario de temas únicamente para OWNER y EDITOR. La Server Action vuelve a comprobar membresía y rol en PostgreSQL mediante updateMany restringido. Zod limita presets, layout y eslogan; no se admite CSS o HTML personalizado. Las operaciones fallan cerradas.
+
+La protección de Server Actions frente a CSRF depende de la validación de Origin de Next.js, y debe verificarse con el proxy/host real de Railway.
+
+## Pendientes
+
+No hay API de alta de restaurantes, invitaciones, gestión de usuarios, imágenes ni editor de productos. Probar OAuth real y cookies antes de abrir a clientes.
