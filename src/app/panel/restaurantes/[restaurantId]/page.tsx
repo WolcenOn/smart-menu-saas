@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import Image from 'next/image';
+import { DishPhotoUploader } from '@/components/dish-photo-uploader';
 import { notFound, redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { getCurrentUserId } from '@/lib/current-user';
@@ -33,7 +35,7 @@ export default async function RestaurantEditorPage({ params }: Props) {
                 orderBy: { position: 'asc' },
                 select: {
                   id: true, name: true, description: true, price: true,
-                  status: true, availability: true, allergensReviewedAt: true,
+                  status: true, availability: true, allergensReviewedAt: true, imageKey: true,
                   allergens: { select: { allergenId: true } },
                 },
               },
@@ -100,6 +102,11 @@ export default async function RestaurantEditorPage({ params }: Props) {
                           ) : null}
                         </div>
                       </div>
+                      {dish.imageKey ? (
+                        <Image unoptimized src={'/api/public/dish-image/' + dish.id}
+                          alt={'Fotografía de ' + dish.name} width={250} height={160} className="editor-photo" />
+                      ) : null}
+                      {canEdit ? <DishPhotoUploader dishId={dish.id} /> : null}
                       {canEdit ? (
                         <details className="editor-details">
                           <summary>Editar plato y alérgenos</summary>
