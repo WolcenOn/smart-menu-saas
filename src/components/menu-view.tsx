@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import Image from 'next/image';
 import { getLayout, getTheme } from '@/lib/themes';
 
 export type MenuDish = {
@@ -6,6 +7,7 @@ export type MenuDish = {
   name: string;
   description: string;
   price: string;
+  imageUrl?: string | null;
   availability: 'AVAILABLE' | 'SOLD_OUT';
   allergens: string[];
 };
@@ -25,6 +27,9 @@ function MenuDishCard({ dish }: { dish: MenuDish }) {
   const soldOut = dish.availability === 'SOLD_OUT';
   return (
     <article className={`menu-dish ${soldOut ? 'menu-dish--sold-out' : ''}`} aria-label={dish.name}>
+      {dish.imageUrl ? (
+        <Image unoptimized className="menu-photo" src={dish.imageUrl} alt={'Fotografía de ' + dish.name} width={960} height={600} />
+      ) : null}
       <div className="menu-dish-main">
         <div className="menu-dish-title-row">
           <h4>{dish.name}</h4>

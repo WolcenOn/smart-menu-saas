@@ -83,6 +83,8 @@ model Dish {
   position            Int                @default(0)
   category            MenuCategory       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   allergens           DishAllergen[]
+  imageKey            String?             @db.VarChar(300)
+  imageUploads        DishImageUpload[]
   @@index([categoryId, status, position])
 }
 
@@ -159,4 +161,18 @@ model RestaurantMember {
 
   @@id([restaurantId, userId])
   @@index([userId, role])
+}
+
+model DishImageUpload {
+  id           String    @id @default(cuid())
+  dishId       String
+  restaurantId String
+  objectKey    String    @unique @db.VarChar(300)
+  maxBytes     Int
+  expiresAt    DateTime
+  usedAt       DateTime?
+  createdAt    DateTime  @default(now())
+  dish         Dish      @relation(fields: [dishId], references: [id], onDelete: Cascade)
+
+  @@index([dishId, expiresAt])
 }

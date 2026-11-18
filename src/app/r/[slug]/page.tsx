@@ -29,7 +29,7 @@ export default async function PublicMenuPage({ params }: RouteProps) {
                 where: { status: 'PUBLISHED', allergensReviewedAt: { not: null } },
                 orderBy: { position: 'asc' },
                 select: {
-                  id: true, name: true, description: true, price: true,
+                  id: true, name: true, description: true, price: true, imageKey: true,
                   availability: true,
                   allergens: { select: { allergen: { select: { name: true } } } },
                 },
@@ -57,6 +57,7 @@ export default async function PublicMenuPage({ params }: RouteProps) {
             id: dish.id, name: dish.name, description: dish.description,
             price: Number(dish.price).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' }),
             availability: dish.availability,
+            imageUrl: dish.imageKey ? '/api/public/dish-image/' + dish.id : null,
             allergens: dish.allergens.map(({ allergen }) => allergen.name),
           })),
         })),
