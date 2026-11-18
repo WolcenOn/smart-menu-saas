@@ -105,3 +105,5 @@ test('admin logout invalidates the scoped administrator session', async ({ page 
   await page.goto('/admin');
   await expect(page).toHaveURL(/\/admin\/acceso/);
 });
+
+// The invitation URL is asserted as an absolute URL above.
