@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum DishStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AvailabilityStatus {
+  AVAILABLE
+  SOLD_OUT
+}
+
+model Restaurant {
+  id        String   @id @default(cuid())
+  slug      String   @unique @db.VarChar(80)
+  name      String   @db.VarChar(160)
+  timezone  String   @default("Europe/Madrid") @db.VarChar(64)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  menus     Menu[]
+}
+
+model Menu {
+  id           String   @id @default(cuid())
+  restaurantId String
+  name         String   @db.VarChar(120)
+  published    Boolean  @default(false)
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  categories   MenuCategory[]
+  @@index([restaurantId, published])
+}
+
+model MenuCategory {
+  id       String @id @default(cuid())
+  menuId   String
+  name     String @db.VarChar(100)
+  position Int    @default(0)
+  menu     Menu   @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  dishes   Dish[]
+  @@index([menuId, position])
+}
+
+model Dish {
+  id                    String             @id @default(cuid())
+  categoryId            String
+  name                  String             @db.VarChar(160)
+  description           String             @default("") @db.VarChar(1200)
+  price                 Decimal            @db.Decimal(9, 2)
+  status                DishStatus         @default(DRAFT)
+  availability          AvailabilityStatus @default(AVAILABLE)
+  allergensReviewedAt   DateTime?
+  position              Int                @default(0)
+  category              MenuCategory       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  allergens             DishAllergen[]
+  @@index([categoryId, status, position])
+}
+
+model Allergen {
+  id     String @id @db.VarChar(40)
+  name   String @unique @db.VarChar(100)
+  dishes DishAllergen[]
+}
+
+model DishAllergen {
+  dishId     String
+  allergenId String
+  dish       Dish     @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  allergen   Allergen @relation(fields: [allergenId], references: [id], onDelete: Restrict)
+  @@id([dishId, allergenId])
+}
