@@ -89,3 +89,11 @@ test('admin session cannot be forged from regular restaurant sign in', async ({ 
   await page.goto('/admin');
   await expect(page).toHaveURL(/\/admin\/acceso/);
 });
+
+test('admin logout invalidates the scoped administrator session', async ({ page }) => {
+  await adminLogin(page);
+  await page.getByRole('button', { name: 'Cerrar sesión' }).click();
+  await expect(page).toHaveURL(/\/admin\/acceso/);
+  await page.goto('/admin');
+  await expect(page).toHaveURL(/\/admin\/acceso/);
+});
