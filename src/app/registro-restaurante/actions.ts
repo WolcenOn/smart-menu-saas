@@ -1,7 +1,6 @@
 'use server';
 
 import { randomBytes } from 'node:crypto';
-import { signIn } from '@/auth';
 import bcrypt from 'bcryptjs';
 import { redirect } from 'next/navigation';
 import { Prisma } from '@prisma/client';
@@ -72,6 +71,7 @@ export async function registerRestaurant(form: FormData) {
     redirect('/registro-restaurante?error=invalid');
   }
 
-  // Use Auth.js for all restaurant sessions. No custom JWTs for clients.
-  await signIn('credentials', { email, password, redirectTo: '/panel' });
+  // Do not couple successful registration to Auth.js session creation.
+  // A login failure must never make the owner believe the account was not created.
+  redirect('/acceso?created=1');
 }

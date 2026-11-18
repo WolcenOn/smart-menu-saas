@@ -11,7 +11,7 @@ export async function loginWithPassword(formData: FormData) {
     redirect('/acceso?error=invalid');
   }
   try {
-    await signIn('credentials', { email, password, redirectTo: '/panel' });
+    await signIn('credentials', { email: email.trim().toLowerCase(), password, redirectTo: '/panel' });
   } catch (error) {
     if (error instanceof AuthError) redirect('/acceso?error=invalid');
     throw error; // Preserve Next.js redirect exceptions.

@@ -35,6 +35,13 @@ test('administrator issues one-time invitation and owner creates a restaurant', 
   await page.getByLabel('Tu nombre').fill('Dueña Demo');
   await page.getByLabel('Contraseña').fill(password);
   await page.getByRole('button', { name: 'Crear restaurante y acceder' }).click();
+  // Registration and login are deliberately separate: once the transaction
+  // commits, the invitation is consumed even if session creation fails.
+  await expect(page).toHaveURL(/\/acceso\?created=1/);
+  await expect(page.getByRole('status')).toContainText('Tu cuenta y tu restaurante se han creado correctamente');
+  await page.getByLabel('Correo electrónico').fill(email.toUpperCase());
+  await page.getByLabel('Contraseña').fill(password);
+  await page.getByRole('button', { name: 'Entrar al panel' }).click();
   await expect(page).toHaveURL(/\/panel/);
   await expect(page.getByRole('heading', { name })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Restaurante de demostración' })).toHaveCount(0);
