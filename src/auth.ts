@@ -12,7 +12,7 @@ const googleEnabled = Boolean(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOO
 const credentialsSchema = z.object({
   email: z.email().max(254).transform(value => value.trim().toLowerCase()),
   password: z.string().min(1).max(200),
-}).strict();
+});
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),

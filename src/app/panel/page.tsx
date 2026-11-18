@@ -11,7 +11,6 @@ export const dynamic = 'force-dynamic';
 export default async function DashboardPage() {
   const userId = await getCurrentUserId();
   if (!userId) redirect('/acceso');
-
   const memberships = await prisma.restaurantMember.findMany({
     where: { userId },
     select: {
@@ -32,9 +31,9 @@ export default async function DashboardPage() {
       <section className="dashboard-body">
         <p className="auth-overline">PANEL PROFESIONAL</p>
         <h1>Mis restaurantes</h1>
-        <p>Únicamente se muestran los restaurantes a los que tienes acceso.</p>
+        <p>Tu carta y su disponibilidad, siempre bajo control.</p>
         {memberships.length === 0
-          ? <div className="dashboard-empty">Tu cuenta está autenticada, pero todavía no tiene restaurantes asignados. Solicita acceso al administrador de la plataforma.</div>
+          ? <div className="dashboard-empty">Tu cuenta todavía no tiene restaurantes asignados. Solicita acceso al administrador.</div>
           : <div className="dashboard-grid">
               {memberships.map(({ role, restaurant }) => (
                 <article className="dashboard-item" key={restaurant.id}>
@@ -43,6 +42,7 @@ export default async function DashboardPage() {
                     <h2>{restaurant.name}</h2>
                   </div>
                   <Link href={'/r/' + restaurant.slug}>Ver carta pública</Link>
+                  <Link href={'/panel/restaurantes/' + restaurant.id} className="editor-primary editor-link">Editar carta</Link>
                   {canPerform(role, 'manageTheme') ? (
                     <form action={updateRestaurantTheme} className="dashboard-theme-form">
                       <input type="hidden" name="restaurantId" value={restaurant.id} />
@@ -66,7 +66,7 @@ export default async function DashboardPage() {
                       <button className="auth-submit" type="submit">Guardar apariencia</button>
                     </form>
                   ) : (
-                    <p>Puede consultar la carta y gestionar la disponibilidad cuando se habilite el módulo de sala.</p>
+                    <p>Tu cuenta permite gestionar disponibilidad, pero no cambiar el diseño.</p>
                   )}
                 </article>
               ))}
