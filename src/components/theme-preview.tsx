@@ -52,7 +52,7 @@ export function ThemePreview() {
       <div className="theme-preview-inner">
         <MenuView restaurantName="Casa Laurel" tagline="Cocina de aquí, hecha con cariño." themePreset={preset} menuLayout={layout} menus={demoMenu} />
       </div>
-      <p className="theme-preview-notice">Vista de demostración: los datos son ficticios y los ajustes no se guardan. La edición persistente estará disponible cuando exista el panel privado con autenticación.</p>
+      <p className="theme-preview-notice">Vista de demostración: los datos son ficticios y los ajustes no se guardan. Para guardar una apariencia real, accede a tu restaurante desde el panel profesional.</p>
     </div>
   );
 }
