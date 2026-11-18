@@ -11,7 +11,7 @@ test('owner can log in, create a product and mark it sold out', async ({ page },
   await expect(page).toHaveURL(/\/panel(?:\?|$)/);
   await expect(page.getByRole('heading', { name: 'Tu espacio de trabajo' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Restaurante de demostración' })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Resumen de Restaurante de demostración' })).toBeVisible();
+  await expect(page.getByLabel('Resumen de Restaurante de demostración')).toBeVisible();
   await expect(page.getByText('Personalizar apariencia')).toBeVisible();
   await page.getByRole('link', { name: /Gestionar carta/ }).click();
   await expect(page.getByRole('heading', { name: 'Entrantes' })).toBeVisible();
