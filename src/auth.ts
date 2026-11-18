@@ -5,6 +5,7 @@ import { PrismaAdapter } from '@auth/prisma-adapter';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
+import { accountCanAuthenticate } from '@/lib/account-status';
 
 // Credentials are temporary for the pilot. Auth.js sessions and tenant membership
 // remain the same when Google OAuth is enabled later.
@@ -30,11 +31,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const user = await prisma.user.findUnique({
           where: { email: input.data.email },
-          select: { id: true, email: true, name: true, passwordHash: true, failedLogins: true, lockedUntil: true },
+          select: { id: true, email: true, name: true, passwordHash: true, failedLogins: true, lockedUntil: true, suspendedAt: true, deletedAt: true },
         });
 
         // Generic rejection; do not disclose whether an email exists.
-        if (!user?.passwordHash || (user.lockedUntil && user.lockedUntil > new Date())) return null;
+        if (!user?.passwordHash || !accountCanAuthenticate(user) || (user.lockedUntil && user.lockedUntil > new Date())) return null;
         const valid = await bcrypt.compare(input.data.password, user.passwordHash);
         if (!valid) {
           const result = await prisma.user.update({

@@ -110,6 +110,8 @@ model User {
   passwordHash  String?             @db.VarChar(100)
   failedLogins  Int                 @default(0)
   lockedUntil   DateTime?
+  suspendedAt   DateTime?
+  deletedAt     DateTime?
   image         String?
   accounts      Account[]
   sessions      Session[]
@@ -188,4 +190,16 @@ model RestaurantInvitation {
   restaurantId String?
   @@index([email, expiresAt])
   @@index([usedAt, revokedAt, expiresAt])
+}
+
+model AdminAuditEvent {
+  id         String   @id @default(cuid())
+  action     String   @db.VarChar(40)
+  userId     String?  @db.VarChar(40)
+  email      String   @db.VarChar(254)
+  details    String   @default("") @db.VarChar(300)
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
 }

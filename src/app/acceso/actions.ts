@@ -13,7 +13,11 @@ export async function loginWithPassword(formData: FormData) {
   try {
     await signIn('credentials', { email: email.trim().toLowerCase(), password, redirectTo: '/panel' });
   } catch (error) {
-    if (error instanceof AuthError) redirect('/acceso?error=invalid');
+    if (error instanceof AuthError) {
+      // Safe operational diagnostics in Railway: no email or credentials in logs.
+      console.error('[restaurant-login] Auth.js rejected sign in:', error.type);
+      redirect('/acceso?error=invalid');
+    }
     throw error; // Preserve Next.js redirect exceptions.
   }
 }

@@ -2,6 +2,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
+import { adminAccountAction, canApplyAccountAction } from '@/lib/admin-account-action';
 import { requireAdminSession, endAdminSession } from '@/lib/admin-session';
 import { hashInvitationToken, invitationEmailSchema, inviteDurationSchema, newInvitationToken } from '@/lib/invitation-tokens';
 
@@ -42,4 +43,55 @@ export async function logoutAdmin() {
   await requireAdminSession();
   await endAdminSession();
   redirect('/admin/acceso');
+}
+
+export async function changeAccountAccess(form: FormData) {
+  await requireAdminSession();
+  const parsed = adminAccountAction.safeParse({
+    userId: form.get('userId'),
+    action: form.get('accessAction'),
+    confirmEmail: form.get('confirmEmail') || undefined,
+  });
+  if (!parsed.success) throw new Error('INVALID_ACCOUNT_ACTION');
+  const { userId, action, confirmEmail } = parsed.data;
+
+  await prisma.$transaction(async tx => {
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, suspendedAt: true, deletedAt: true },
+    });
+    if (!user || !canApplyAccountAction(action, user, confirmEmail)) {
+      throw new Error('INVALID_ACCOUNT_STATE');
+    }
+    const condition = action === 'resume'
+      ? { not: null }
+      : action === 'pause'
+        ? null
+        : undefined;
+    const changed = await tx.user.updateMany({
+      where: {
+        id: user.id,
+        deletedAt: null,
+        ...(condition === undefined ? {} : { suspendedAt: condition }),
+      },
+      data: action === 'pause'
+        ? { suspendedAt: new Date() }
+        : action === 'resume'
+          ? { suspendedAt: null, failedLogins: 0, lockedUntil: null }
+          : { deletedAt: new Date(), suspendedAt: new Date(), passwordHash: null },
+    });
+    if (changed.count !== 1) throw new Error('ACCOUNT_STATE_CHANGED');
+    if (action === 'remove') {
+      await tx.account.deleteMany({ where: { userId } });
+    }
+    await tx.session.deleteMany({ where: { userId } });
+    await tx.adminAuditEvent.create({
+      data: {
+        action: action === 'pause' ? 'ACCOUNT_PAUSED' : action === 'resume' ? 'ACCOUNT_RESUMED' : 'ACCOUNT_ACCESS_REMOVED',
+        userId, email: user.email,
+        details: action === 'remove' ? 'Access removed; restaurant history retained.' : 'Access changed by administrator.',
+      },
+    });
+  });
+  revalidatePath('/admin');
 }
