@@ -49,3 +49,40 @@
 .admin-invite small{font-size:11px;color:#657a69}
 .admin-invite .dashboard-logout{font-size:11px;padding:8px 13px}
 @media(max-width:760px){.admin-invitations-grid{grid-template-columns:1fr}}
+
+/* Historic account administration */
+.admin-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:20px 0 26px}
+.admin-summary>div{padding:18px;border:1px solid #dfe9dc;background:#fff;border-radius:14px;display:grid;gap:9px}
+.admin-summary span{color:#607769;font-size:12px}
+.admin-summary strong{font-size:30px;font-family:Georgia,serif;font-weight:500}
+.admin-accounts-section{margin:35px 0}
+.admin-accounts-section h2{font-family:Georgia,serif;font-weight:500;font-size:27px;margin:8px 0 18px}
+.admin-account-list{display:grid;gap:12px}
+.admin-account{display:flex;justify-content:space-between;flex-wrap:wrap;gap:20px;padding:20px;background:#fff;border:1px solid #dce7dc;border-radius:16px}
+.admin-account-main{flex:1;min-width:240px}
+.admin-account-main>p{color:#65766b;overflow-wrap:anywhere;font-size:13px;margin:7px 0 14px}
+.admin-dish-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.admin-dish-title strong{font-size:17px}
+.admin-account-status{padding:5px 10px;border-radius:50px;font-size:10px;font-weight:700}
+.admin-account-status-active{background:#e2f0e4;color:#256341}
+.admin-account-status-paused{background:#fff1d9;color:#895b1e}
+.admin-account-status-removed{background:#f3e0dc;color:#893d2e}
+.admin-user-restaurants{display:grid;gap:6px}
+.admin-user-restaurants>div{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.admin-user-restaurants strong{font-size:13px}
+.admin-user-restaurants small{color:#708274;font-size:11px}
+.admin-user-restaurants a{color:#35664b;font-size:12px;font-weight:700}
+.admin-account-actions{display:flex;flex-direction:column;align-items:flex-end;gap:12px}
+.admin-remove-details{max-width:310px;font-size:12px}
+.admin-remove-details summary{cursor:pointer;color:#983e2d;font-weight:700}
+.admin-remove-details p{line-height:1.5;color:#687669}
+.admin-remove-details form,.admin-remove-details label{display:grid;gap:9px}
+.admin-remove-details input{width:100%;border:1px solid #d7b9af;padding:9px;border-radius:8px}
+.admin-event-list{background:#fff;border:1px solid #dce7dc;border-radius:16px;overflow:hidden}
+.admin-event-list>div{display:flex;align-items:center;flex-wrap:wrap;gap:13px;padding:13px 18px;border-bottom:1px solid #ecf0e9;font-size:12px}
+.admin-event-list>div:last-child{border-bottom:0}
+.admin-event-list span{color:#547362}
+.admin-event-list strong{overflow-wrap:anywhere}
+.admin-event-list small{color:#879087;margin-left:auto}
+.admin-invite>span{font-size:12px;overflow-wrap:anywhere}
+@media(max-width:650px){.admin-summary{grid-template-columns:1fr}.admin-account-actions{align-items:flex-start;width:100%}.admin-remove-details{max-width:100%}}
