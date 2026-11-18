@@ -31,7 +31,7 @@ export function AdminInvitationForm() {
         </button>
       </form>
       {result.error ? <p className="auth-alert" role="alert">{result.error}</p> : null}
-      {result.path ? (
+      {!pending && result.path ? (
         <div className="admin-new-link" role="status">
           <strong>Enlace creado para {result.email}</strong>
           <p>Este es el enlace completo con el dominio de la web. Puedes abrirlo para comprobarlo o copiarlo y enviarlo. Por seguridad solo se muestra tras generarlo.</p>
