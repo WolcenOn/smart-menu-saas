@@ -28,7 +28,18 @@ const securityHeaders = [
 const config: NextConfig = {
   poweredByHeader: false,
   async headers() {
-    return [{ source: '/:path*', headers: securityHeaders }];
+    return [
+      { source: '/:path*', headers: securityHeaders },
+      { source: '/registro-restaurante/:token', headers: [
+        { key: 'Referrer-Policy', value: 'no-referrer' },
+        { key: 'Cache-Control', value: 'no-store' },
+        { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+      ] },
+      { source: '/admin/:path*', headers: [
+        { key: 'Cache-Control', value: 'no-store' },
+        { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+      ] },
+    ];
   },
 };
 

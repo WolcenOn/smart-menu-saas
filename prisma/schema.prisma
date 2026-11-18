@@ -176,3 +176,16 @@ model DishImageUpload {
 
   @@index([dishId, expiresAt])
 }
+
+model RestaurantInvitation {
+  id          String    @id @default(cuid())
+  tokenHash   String    @unique @db.Char(64)
+  email       String    @db.VarChar(254)
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  usedAt      DateTime?
+  revokedAt   DateTime?
+  restaurantId String?
+  @@index([email, expiresAt])
+  @@index([usedAt, revokedAt, expiresAt])
+}

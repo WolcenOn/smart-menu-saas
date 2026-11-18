@@ -6,61 +6,72 @@ import bcrypt from 'bcryptjs';
 import { redirect } from 'next/navigation';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
-import { makeRestaurantSlug, registrationEnabled, registrationSchema, validRegistrationCode } from '@/lib/restaurant-registration';
+import { hashInvitationToken } from '@/lib/invitation-tokens';
+import { makeRestaurantSlug, registrationSchema } from '@/lib/restaurant-registration';
 
 export async function registerRestaurant(form: FormData) {
-  if (!registrationEnabled()) redirect('/registro-restaurante?error=closed');
-
   const input = registrationSchema.safeParse({
     restaurantName: form.get('restaurantName'),
     ownerName: form.get('ownerName'),
     email: form.get('email'),
     password: form.get('password'),
-    inviteCode: form.get('inviteCode'),
+    token: form.get('token'),
   });
+  if (!input.success) redirect('/registro-restaurante');
 
-  if (!input.success) redirect('/registro-restaurante?error=invalid');
-  if (!validRegistrationCode(input.data.inviteCode)) redirect('/registro-restaurante?error=invalid');
-
-  // Never accept a client-supplied tenant, member role, slug or identity.
-  const passwordHash = await bcrypt.hash(input.data.password, 12);
-  const slug = makeRestaurantSlug(input.data.restaurantName, randomBytes(6).toString('hex'));
+  const { token, email, restaurantName, ownerName, password } = input.data;
+  const tokenHash = hashInvitationToken(token);
+  const passwordHash = await bcrypt.hash(password, 12);
+  const slug = makeRestaurantSlug(restaurantName, randomBytes(6).toString('hex'));
 
   try {
     await prisma.$transaction(async tx => {
-      const user = await tx.user.create({
-        data: {
-          email: input.data.email,
-          name: input.data.ownerName,
-          passwordHash,
-        },
+      const invite = await tx.restaurantInvitation.findUnique({
+        where: { tokenHash },
+        select: { id: true, email: true },
       });
-      await tx.restaurant.create({
+      // Do not reveal whether an email address or invitation exists.
+      if (!invite || invite.email !== email) throw new Error('INVALID_INVITATION');
+
+      // Only one concurrent request can claim the invitation. If creating
+      // the restaurant fails, the transaction restores the invitation too.
+      const claimed = await tx.restaurantInvitation.updateMany({
+        where: {
+          id: invite.id, tokenHash, email, usedAt: null, revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        data: { usedAt: new Date() },
+      });
+      if (claimed.count !== 1) throw new Error('INVALID_INVITATION');
+
+      const user = await tx.user.create({
+        data: { email, name: ownerName, passwordHash },
+      });
+      const restaurant = await tx.restaurant.create({
         data: {
-          slug,
-          name: input.data.restaurantName,
-          themePreset: 'OLIVE',
-          menuLayout: 'CARDS',
+          slug, name: restaurantName,
+          themePreset: 'OLIVE', menuLayout: 'CARDS',
           members: { create: { userId: user.id, role: 'OWNER' } },
           menus: {
             create: {
-              name: 'Carta principal',
-              published: true,
+              name: 'Carta principal', published: true,
               categories: { create: { name: 'Para empezar', position: 1 } },
             },
           },
         },
+        select: { id: true },
+      });
+      await tx.restaurantInvitation.update({
+        where: { id: invite.id },
+        data: { restaurantId: restaurant.id },
       });
     });
   } catch (error) {
-    // Avoid disclosing whether a specific email already exists.
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      redirect('/registro-restaurante?error=unavailable');
-    }
-    throw error;
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code !== 'P2002') throw error;
+    // Don't preserve the secret token in an error redirect or server logs.
+    redirect('/registro-restaurante?error=invalid');
   }
 
-  // Sign in with Auth.js after the successful atomic creation: no second form.
-  // Existing session and OAuth migration compatibility are preserved.
-  await signIn('credentials', { email: input.data.email, password: input.data.password, redirectTo: '/panel' });
+  // Use Auth.js for all restaurant sessions. No custom JWTs for clients.
+  await signIn('credentials', { email, password, redirectTo: '/panel' });
 }

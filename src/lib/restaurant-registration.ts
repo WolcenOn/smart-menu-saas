@@ -1,4 +1,3 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 
 export const registrationSchema = z.object({
@@ -10,23 +9,8 @@ export const registrationSchema = z.object({
     .regex(/[A-Z]/, 'Incluye una mayúscula')
     .regex(/[0-9]/, 'Incluye un número')
     .regex(/[^a-zA-Z0-9]/, 'Incluye un símbolo'),
-  inviteCode: z.string().min(24).max(200),
+  token: z.string().regex(/^[a-f0-9]{64}$/),
 }).strict();
-
-export function registrationEnabled(): boolean {
-  // A single private code gates the pilot until email verification, quotas and
-  // a rate limit/WAF are available. No unverified public signups by default.
-  return Boolean(process.env.RESTAURANT_SIGNUP_CODE && process.env.RESTAURANT_SIGNUP_CODE.length >= 32);
-}
-
-export function validRegistrationCode(code: string): boolean {
-  if (!registrationEnabled()) return false;
-  const configured = process.env.RESTAURANT_SIGNUP_CODE!;
-  // Constant-length digests prevent leaking the configured code's length.
-  const submittedDigest = createHash('sha256').update(code).digest();
-  const expectedDigest = createHash('sha256').update(configured).digest();
-  return timingSafeEqual(submittedDigest, expectedDigest);
-}
 
 export function makeRestaurantSlug(name: string, suffix: string): string {
   const base = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '')

@@ -14,7 +14,7 @@ export default function Home() {
         <div className="site-nav-links">
           <Link href="#funciones">Características</Link>
           <Link href="/acceso">Acceder</Link>
-          <Link className="site-link-primary" href="/registro-restaurante">Crear restaurante →</Link>
+          <Link className="site-link-primary" href="/registro-restaurante">Solicitar invitación →</Link>
         </div>
       </nav>
       <section className="site-hero">
@@ -23,7 +23,7 @@ export default function Home() {
           <h1>Tu carta,<br/><em>tu esencia.</em></h1>
           <p className="site-lead">Una carta digital tan especial como tu restaurante. Bonita, fácil de mantener y preparada para cambiar al ritmo de tu cocina.</p>
           <div className="site-actions">
-            <Link className="site-button site-button--solid" href="/registro-restaurante">Crear mi restaurante ↗</Link>
+            <Link className="site-button site-button--solid" href="/registro-restaurante">Descubre el acceso ↗</Link>
             <Link className="site-button site-button--outline" href="/demo/temas">Ver diseños de carta</Link>
           </div>
         </div>

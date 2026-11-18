@@ -1,43 +1,91 @@
 import { test, expect } from '@playwright/test';
 import { PrismaClient } from '@prisma/client';
+import { hashInvitationToken } from '../src/lib/invitation-tokens';
 
-const inviteCode = 'ci-only-restaurant-invite-code-2026-123456';
+const adminSecret = 'ci-only-admin-long-random-like-key-for-testing-2026-1234567890';
 const password = 'RegistrationTestPassword2026!';
 
-test('restaurant owner registers from separate entry and manages only their restaurant', async ({ page }) => {
-  const email = 'pilot-' + crypto.randomUUID() + '@example.invalid';
-  const name = 'Casa Test ' + crypto.randomUUID().slice(0, 8);
+async function adminLogin(page: import('@playwright/test').Page) {
+  await page.goto('/admin');
+  await expect(page).toHaveURL(/\/admin\/acceso/);
+  await page.getByLabel('Clave de administración').fill(adminSecret);
+  await page.getByRole('button', { name: 'Entrar en administración' }).click();
+  await expect(page).toHaveURL(/\/admin$/);
+}
 
-  await page.goto('/registro-restaurante');
+async function issue(page: import('@playwright/test').Page, email: string, hours = '48') {
+  await page.getByLabel('Correo del propietario').fill(email);
+  await page.getByLabel('Caducidad').selectOption(hours);
+  await page.getByRole('button', { name: 'Crear invitación' }).click();
+  const url = await page.getByLabel('Enlace de invitación').inputValue();
+  expect(url).toContain('/registro-restaurante/');
+  return url;
+}
+
+test('administrator issues one-time invitation and owner creates a restaurant', async ({ page }) => {
+  await adminLogin(page);
+  const email = 'invited-' + crypto.randomUUID() + '@example.invalid';
+  const name = 'Casa Prueba ' + crypto.randomUUID().slice(0, 8);
+  const invitationUrl = await issue(page, email);
+
+  await page.goto(invitationUrl);
   await expect(page.getByRole('heading', { name: 'Tu restaurante, listo para empezar.' })).toBeVisible();
+  await expect(page.getByLabel('Correo invitado')).toHaveValue(email);
   await page.getByLabel('Nombre del restaurante').fill(name);
   await page.getByLabel('Tu nombre').fill('Dueña Demo');
-  await page.getByLabel('Correo electrónico').fill(email);
   await page.getByLabel('Contraseña').fill(password);
-  await page.getByLabel('Código de invitación al piloto').fill(inviteCode);
-  await page.getByRole('button', { name: 'Crear mi restaurante' }).click();
+  await page.getByRole('button', { name: 'Crear restaurante y acceder' }).click();
   await expect(page).toHaveURL(/\/panel/);
   await expect(page.getByRole('heading', { name })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Restaurante de demostración' })).toHaveCount(0);
-  await expect(page.getByRole('link', { name: 'Editar carta' })).toHaveCount(1);
 
   const db = new PrismaClient();
   try {
-    const user = await db.user.findUnique({ where: { email }, include: { memberships: { include: { restaurant: { include: { menus: { include: { categories: true } } } } } } } });
+    const token = invitationUrl.split('/').pop()!;
+    const invite = await db.restaurantInvitation.findUnique({ where: { tokenHash: hashInvitationToken(token) } });
+    expect(invite?.usedAt).not.toBeNull();
+    expect(invite?.restaurantId).toBeTruthy();
+    const user = await db.user.findUnique({ where: { email }, include: { memberships: true } });
     expect(user?.memberships).toHaveLength(1);
     expect(user?.memberships[0].role).toBe('OWNER');
-    expect(user?.memberships[0].restaurant.menus[0].categories).toHaveLength(1);
   } finally { await db.$disconnect(); }
+
+  await page.goto(invitationUrl);
+  await expect(page.getByText(/ha caducado, ya se ha utilizado o ha sido revocado/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Crear restaurante y acceder' })).toHaveCount(0);
 });
 
-test('restaurant registration rejects incorrect invitation without creating account', async ({ page }) => {
-  await page.goto('/registro-restaurante');
-  await page.getByLabel('Nombre del restaurante').fill('No autorizado');
-  await page.getByLabel('Tu nombre').fill('Persona de pruebas');
-  await page.getByLabel('Correo electrónico').fill('rejected-' + crypto.randomUUID() + '@example.invalid');
-  await page.getByLabel('Contraseña').fill(password);
-  await page.getByLabel('Código de invitación al piloto').fill('00000000000000000000000000000000');
-  await page.getByRole('button', { name: 'Crear mi restaurante' }).click();
+test('administrator can revoke and expire invitations', async ({ page }) => {
+  await adminLogin(page);
+  const email = 'revoked-' + crypto.randomUUID() + '@example.invalid';
+  const url = await issue(page, email, '1');
+  const row = page.locator('.admin-invite').filter({ hasText: email });
+  await row.getByRole('button', { name: 'Revocar' }).click();
+  await expect(row.getByText('Revocada')).toBeVisible();
+  await page.goto(url);
+  await expect(page.getByText(/ha caducado, ya se ha utilizado o ha sido revocado/)).toBeVisible();
+
+  const expiredEmail = 'expired-' + crypto.randomUUID() + '@example.invalid';
+  await page.goto('/admin');
+  const expiryUrl = await issue(page, expiredEmail, '1');
+  const db = new PrismaClient();
+  try {
+    const token = expiryUrl.split('/').pop()!;
+    await db.restaurantInvitation.update({
+      where: { tokenHash: hashInvitationToken(token) },
+      data: { expiresAt: new Date(Date.now() - 1000) },
+    });
+  } finally { await db.$disconnect(); }
+  await page.goto(expiryUrl);
+  await expect(page.getByText(/ha caducado, ya se ha utilizado o ha sido revocado/)).toBeVisible();
+});
+
+test('admin session cannot be forged from regular restaurant sign in', async ({ page }) => {
+  await page.goto('/admin');
+  await expect(page).toHaveURL(/\/admin\/acceso/);
+  await page.getByLabel('Clave de administración').fill('wrong-key-' + 'a'.repeat(64));
+  await page.getByRole('button', { name: 'Entrar en administración' }).click();
   await expect(page.getByRole('alert')).toBeVisible();
-  await expect(page).toHaveURL(/\/registro-restaurante\?error=invalid/);
+  await page.goto('/admin');
+  await expect(page).toHaveURL(/\/admin\/acceso/);
 });
