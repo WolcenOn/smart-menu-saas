@@ -18,21 +18,37 @@ enum AvailabilityStatus {
   SOLD_OUT
 }
 
+// White-listed presets only: never store arbitrary CSS or HTML supplied by tenants.
+enum RestaurantThemePreset {
+  OLIVE
+  TERRACOTTA
+  OCEAN
+  NOIR
+}
+
+enum MenuLayout {
+  CARDS
+  LIST
+}
+
 model Restaurant {
-  id        String   @id @default(cuid())
-  slug      String   @unique @db.VarChar(80)
-  name      String   @db.VarChar(160)
-  timezone  String   @default("Europe/Madrid") @db.VarChar(64)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  menus     Menu[]
+  id          String                @id @default(cuid())
+  slug        String                @unique @db.VarChar(80)
+  name        String                @db.VarChar(160)
+  tagline     String                @default("") @db.VarChar(180)
+  themePreset RestaurantThemePreset @default(OLIVE)
+  menuLayout  MenuLayout            @default(CARDS)
+  timezone    String                @default("Europe/Madrid") @db.VarChar(64)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  menus       Menu[]
 }
 
 model Menu {
-  id           String   @id @default(cuid())
+  id           String     @id @default(cuid())
   restaurantId String
-  name         String   @db.VarChar(120)
-  published    Boolean  @default(false)
+  name         String     @db.VarChar(120)
+  published    Boolean    @default(false)
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   categories   MenuCategory[]
   @@index([restaurantId, published])
@@ -49,17 +65,17 @@ model MenuCategory {
 }
 
 model Dish {
-  id                    String             @id @default(cuid())
-  categoryId            String
-  name                  String             @db.VarChar(160)
-  description           String             @default("") @db.VarChar(1200)
-  price                 Decimal            @db.Decimal(9, 2)
-  status                DishStatus         @default(DRAFT)
-  availability          AvailabilityStatus @default(AVAILABLE)
-  allergensReviewedAt   DateTime?
-  position              Int                @default(0)
-  category              MenuCategory       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  allergens             DishAllergen[]
+  id                  String             @id @default(cuid())
+  categoryId          String
+  name                String             @db.VarChar(160)
+  description         String             @default("") @db.VarChar(1200)
+  price               Decimal            @db.Decimal(9, 2)
+  status              DishStatus         @default(DRAFT)
+  availability        AvailabilityStatus @default(AVAILABLE)
+  allergensReviewedAt DateTime?
+  position            Int                @default(0)
+  category            MenuCategory       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  allergens           DishAllergen[]
   @@index([categoryId, status, position])
 }
 
