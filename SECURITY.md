@@ -1,29 +1,25 @@
-# Seguridad — Smart Menu SaaS
+# Política de seguridad
 
-## Reglas de desarrollo
+## Implementación actual (piloto)
+- React/JSX escapa contenido de nombres, descripciones y eslóganes: **no** interpretar HTML libre.
+- Prohibidos `dangerouslySetInnerHTML`, `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `eval`, `new Function` y `document.write` con contenido no confiable.
+- Prisma con filtros parametrizados. Prohibido concatenar SQL y `$queryRawUnsafe` con datos de usuarios.
+- Auth.js Credentials con JWT firmado, hash bcrypt y duración limitada; sin registro público ni credenciales demo predefinidas.
+- Autorización en servidor por identidad actual, membresía y rol. Los identificadores del navegador nunca otorgan permisos.
+- Mutaciones de carta restringidas al restaurante y entradas validadas estrictamente con Zod; alérgenos limitados a los 14 grupos.
+- Borrador predeterminado si no se marca revisión explícita de alérgenos.
+- La etiqueta SOLD_OUT sigue visible pero no representa inventario medido.
+- Los datos demo destructivos para E2E se limitan a CI y PostgreSQL efímero.
+- Valores del tema y diseños en whitelist. No se acepta HTML/CSS/JS de restaurantes.
 
-- No usar `dangerouslySetInnerHTML`, `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `eval`, `new Function` ni `document.write` para contenido externo. Mostrar nombres, platos y observaciones mediante JSX (escapado de React).
-- No interpolar SQL. Utilizar Prisma, filtros y consultas parametrizadas; nunca `$queryRawUnsafe` con entradas externas.
-- Antes de crear **cualquier** endpoint de escritura, implementar autenticación, pertenencia al restaurante, permisos por rol y protección CSRF en servidor.
-- Validar toda entrada en el servidor (tipos, longitud, cuotas y relaciones). Usar Zod al introducir mutaciones.
-- Cookies de sesión `HttpOnly`, `Secure` y `SameSite`. Nada de tokens de sesión en localStorage.
-- No subir originales a Next.js: optimizar imágenes en navegador y usar subida directa al bucket con autorización temporal, validación real y almacenamiento aislado. No admitir SVG arbitrario.
-- No aceptar URL arbitraria de cliente como destino de redirección, imagen o petición a servidor; aplicar allowlists y protocolos HTTPS.
-- Para QR de precomanda: token opaco de alta entropía, caducidad, idempotencia y revalidación de precio/disponibilidad.
-- Las etiquetas dietéticas y los alérgenos deben ser confirmados, nunca inferidos a partir de textos libres.
-- Evitar errores que expongan secretos, SQL o trazas. Los logs no deben almacenar datos personales innecesarios.
-- Revisar permisos por tenant y ejecutar CI y auditoría antes de fusionar.
+## Barreras pendientes para uso público
+- **CSP provisional:** `next.config.ts` aún permite `unsafe-inline` en scripts por compatibilidad. Implementar nonce/hashes antes de admitir usuarios externos.
+- Añadir **rate limit por IP** o WAF externo a las credenciales; el bloqueo temporal por cuenta no basta ante ataques distribuidos.
+- Crear proceso seguro de recuperar/modificar contraseñas y revocar sesiones. Al cambiar contraseña, invalidar las sesiones existentes.
+- Incorporar lockfile validado y `npm ci`, copias de seguridad y restore probado.
+- Auditar origen/CSRF en Server Actions detrás del proxy Railway.
+- Proteger URLs, redirecciones y uploads mediante validación y destinos permitidos; no subir SVG arbitrario.
+- Revisar cumplimiento de información alimentaria con personas responsables del restaurante.
 
-## Estado actual
-
-Esta rama introduce **solo lecturas públicas**. La lógica de disponibilidad visible se consulta desde PostgreSQL. No hay editor ni endpoint que permita editar restaurantes sin autorización.
-
-El `next.config.ts` actual incluye una **CSP provisional con `unsafe-inline`**, por compatibilidad inicial. Esto **no es una CSP estricta**. Antes de lanzar usuarios reales, implementar una política con nonces/hashes adecuada para la versión instalada de Next.js y probar en Chromium/WebKit; añadir HSTS solo cuando HTTPS y el dominio estén bien configurados.
-
-Se proporciona un plato con texto hostil únicamente en la semilla E2E opcional. Nunca activar `E2E_TEST_SEED=1` en producción.
-
-El control de revisión de alérgenos es una base técnica; **no acredita por sí mismo cumplimiento legal**. Un responsable del restaurante debe validar los datos y las variantes de cada plato.
-
-## Notificación privada
-
-No comunicar vulnerabilidades ni secretos mediante issues públicos. Contactar por un canal privado al responsable del repositorio.
+## Reportes
+No publicar secretos o detalles explotables en issues públicos. Usar un canal privado de contacto con el responsable.
