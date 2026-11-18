@@ -107,3 +107,23 @@ test('admin logout invalidates the scoped administrator session', async ({ page 
 });
 
 // The invitation URL is asserted as an absolute URL above.
+
+test('reissuing a pending invitation invalidates the old link', async ({ page }) => {
+  await adminLogin(page);
+  const email = 'reissue-' + crypto.randomUUID() + '@example.invalid';
+  const first = await issue(page, email);
+  const second = await issue(page, email);
+  expect(second).not.toBe(first);
+  await page.goto(first);
+  await expect(page.getByText(/ha caducado, ya se ha utilizado o ha sido revocado/)).toBeVisible();
+  await page.goto(second);
+  await expect(page.getByLabel('Correo invitado')).toHaveValue(email);
+});
+
+test('admin cannot invite an existing account to create a duplicate restaurant', async ({ page }) => {
+  await adminLogin(page);
+  await page.getByLabel('Correo del propietario').fill('e2e-owner@example.invalid');
+  await page.getByRole('button', { name: 'Crear invitación' }).click();
+  await expect(page.getByRole('alert')).toContainText('ya pertenece a una cuenta');
+  await expect(page.getByLabel('Enlace de invitación')).toHaveCount(0);
+});
