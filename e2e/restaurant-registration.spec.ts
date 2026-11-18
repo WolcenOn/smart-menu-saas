@@ -162,6 +162,10 @@ test('invalid registration password preserves invitation and explains the requir
 
   // Server-side validation is separately unit-tested. Valid submission works
   // with the very same invitation and creates the owner only once.
+  // Server-side validation redirects back to the form, so re-enter the
+  // non-sensitive fields after the redirect rather than expecting persistence.
+  await page.getByLabel('Nombre del restaurante').fill('Restaurante con validación');
+  await page.getByLabel('Tu nombre').fill('Propietaria Validación');
   await page.getByLabel('Contraseña').fill(password);
   await page.getByRole('button', { name: 'Crear restaurante y acceder' }).click();
   await expect(page).toHaveURL(/\/acceso\?created=1/);
