@@ -1,32 +1,39 @@
-# Railway — despliegue inicial (no automático)
+# Despliegue en Railway
 
-## Requisitos previos
-El proyecto necesita un PostgreSQL accesible. No desplegar todavía como servicio de clientes: **no hay autenticación ni interfaz de edición**.
+## Diagnóstico inicial
 
-1. En Railway crea un proyecto y añade **Database → PostgreSQL**. Mantén la base de datos sin acceso público.
-2. Añade un servicio desde el repositorio GitHub y selecciona la rama deseada solo después de aprobar la PR.
-3. En Variables del servicio Next.js, crea la referencia DATABASE_URL apuntando al DATABASE_URL privado del servicio PostgreSQL. No copies contraseñas al repositorio ni uses NEXT_PUBLIC_DATABASE_URL.
-4. Ajusta el build a `npm run build` (el postinstall de npm genera el cliente Prisma).
-5. Antes de iniciar la nueva versión, ejecuta las migraciones **una vez**, mediante un paso de despliegue controlado: `npm run db:migrate`. No usar `prisma db push` para producción.
-6. Start command: `npm run start`. Railway proporciona PORT; Next debe escuchar en el puerto configurado.
-7. Health check: `/api/health`. Verifica conexión a la base de datos y devuelve 503 si falla.
-8. Configura HTTPS/dominio, observabilidad, copias de seguridad y prueba restauración antes de cualquier uso real.
+La rama `main` del repositorio todavía no contiene código de aplicación. El desarrollo está en `chore/secure-foundation` dentro de la [PR #1](https://github.com/WolcenOn/smart-menu-saas/pull/1). Railway no puede construir Next.js si apunta a `main` antes de fusionar la PR.
 
-**Importante:** el seed por defecto solo registra alérgenos. La demostración contiene datos inseguros intencionales para probar XSS y se activa **exclusivamente** con `E2E_TEST_SEED=1` en una base de datos de pruebas que pueda borrarse. **Nunca establezcas esa variable en producción.**
+**No desplegar públicamente para clientes reales hasta pasar CI y revisar seguridad.**
 
-## Desarrollo local y CI
-```bash
-npm install
-npx prisma generate
-npm run db:migrate
-npm run db:seed
-npm run dev
-```
+## Configuración de Railway
 
-En CI se inicia un PostgreSQL aislado, se crean datos de prueba y se ejecuta Playwright en Chromium de escritorio y móvil.
+1. En el proyecto Railway, crea un servicio PostgreSQL si no existe.
+2. Conecta el servicio web de GitHub al repositorio. Para una preview de pruebas puedes usar la rama `chore/secure-foundation`; para producción, espera a una PR aprobada y fusionada a `main`.
+3. En las variables del servicio web, añade `DATABASE_URL` mediante referencia a `Postgres.DATABASE_URL` del servicio de base de datos. No copies secretos al repositorio.
+4. Comando de build: `npm run build`. Comando de inicio: `npm run start` (Next.js respeta la variable `PORT`).
+5. Las migraciones se aplican una única vez por release con `npm run db:migrate` después de configurar la base, preferentemente en un paso previo al despliegue. No ejecutar `prisma db push` en producción.
+6. Healthcheck: `/api/health`. Este endpoint mide disponibilidad del proceso web, no acceso a la base.
+7. Configura un dominio HTTPS, observabilidad, copias de seguridad y procedimiento de restauración antes de uso real.
 
-## Estado pendiente
-- Falta autenticación y autorización de administradores/camareros.
-- No hay imágenes ni almacenamiento S3 todavía.
-- No se han implementado programación temporal ni promociones.
-- Antes de producción: generar y confirmar package-lock.json, sustituir `npm install` por `npm ci`, afinar CSP con nonces/hashes, comprobar auditoría y habilitar backups.
+## Importante para el primer arranque
+
+- `npm run build` necesitará el cliente Prisma generado (`prisma generate`). En la siguiente revisión fijaremos dependencias y automatizaremos su generación.
+- No pongas `E2E_TEST_SEED=1` en Railway: borra y recrea el restaurante demo, y se utiliza solo en CI con una base desechable.
+- No expongas PostgreSQL por TCP público salvo necesidad operativa específica.
+- Si la raíz `/` abre, pero `/r/demo-restaurante` no existe, es normal: el seed de producción solo crea alérgenos, no un restaurante demo.
+- La carta pública actual requiere PostgreSQL activo.
+- Todavía no hay autenticación ni editor; esta rama no es un producto terminado.
+
+## Diagnóstico de fallos
+
+| Síntoma | Posible causa |
+|---|---|
+| Missing package.json | Railway construye `main` antes de fusionar la PR |
+| DATABASE_URL missing | Falta variable de referencia al PostgreSQL |
+| P1001 / conexión fallida | PostgreSQL no está listo o la URL es incorrecta |
+| Relation does not exist | No se aplicaron migraciones |
+| Healthcheck fallido | La aplicación no arrancó o el puerto es incorrecto |
+| 404 en demo-restaurante | No existe seed de demostración en producción |
+
+Comprueba primero Deployments → Build Logs y Deploy Logs. No compartas URLs de base de datos, contraseñas o tokens.

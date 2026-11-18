@@ -1,13 +1,10 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 
-export const dynamic = 'force-dynamic';
-
+// Railway debe comprobar que la aplicación responde sin depender de migraciones
+// ni del estado momentáneo de PostgreSQL.
+// Una comprobación de base de datos se añadirá a un endpoint interno autenticado.
 export async function GET() {
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    return NextResponse.json({ status: 'ok' }, { headers: { 'Cache-Control': 'no-store' } });
-  } catch {
-    return NextResponse.json({ status: 'unavailable' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
-  }
+  return NextResponse.json({ status: 'ok' }, {
+    headers: { 'Cache-Control': 'no-store' },
+  });
 }
