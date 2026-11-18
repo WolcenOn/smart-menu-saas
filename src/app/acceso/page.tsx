@@ -2,10 +2,10 @@ import { signIn } from '@/auth';
 import Link from 'next/link';
 import { loginWithPassword } from './actions';
 
-type Props = { searchParams: Promise<{ error?: string }> };
+type Props = { searchParams: Promise<{ error?: string; created?: string }> };
 
 export default async function SignInPage({ searchParams }: Props) {
-  const { error } = await searchParams;
+  const { error, created } = await searchParams;
   const googleEnabled = Boolean(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
   return (
     <main className="auth-page">
@@ -14,6 +14,7 @@ export default async function SignInPage({ searchParams }: Props) {
         <span className="auth-overline">ACCESO PROFESIONAL</span>
         <h1>Bienvenido a tu espacio.</h1>
         <p>Accede a tu restaurante para actualizar platos, alérgenos y disponibilidad.</p>
+        {created === '1' ? <p className="auth-success" role="status">Restaurante creado. Ya puedes iniciar sesión para preparar tu carta.</p> : null}
         {error ? <p className="auth-alert" role="alert">No se ha podido iniciar sesión. Comprueba los datos o vuelve a intentarlo más tarde.</p> : null}
         <form action={loginWithPassword} className="dashboard-theme-form">
           <label>Correo electrónico
@@ -29,7 +30,8 @@ export default async function SignInPage({ searchParams }: Props) {
             <button className="dashboard-logout" type="submit">Continuar con Google</button>
           </form>
         ) : null}
-        <small>No hay registro público. El acceso se asigna por el administrador del sistema.</small>
+        <p className="registration-switch">¿Aún no tienes restaurante? <Link href="/registro-restaurante">Crear mi restaurante</Link></p>
+        <small>Si eres parte del equipo de un restaurante, accede con la cuenta facilitada por su propietario.</small>
       </section>
     </main>
   );

@@ -25,6 +25,7 @@ jobs:
       CI: 'true'
       AUTH_SECRET: 'ci-only-long-auth-secret-not-for-production-123456789'
       AUTH_TRUST_HOST: 'true'
+      RESTAURANT_SIGNUP_CODE: 'ci-only-restaurant-invite-code-2026-123456'
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
