@@ -16,13 +16,32 @@ export async function createInvitation(_state: InviteResult, form: FormData): Pr
   const hours = inviteDurationSchema.safeParse(form.get('hours'));
   if (!email.success || !hours.success) return { error: 'Comprueba el correo y la duración.', path: '', email: '' };
 
+  const existing = await prisma.user.findUnique({
+    where: { email: email.data },
+    select: { id: true },
+  });
+  if (existing) {
+    return {
+      error: 'Ese correo ya pertenece a una cuenta. No necesita otra invitación; revisa su acceso en Usuarios registrados.',
+      path: '', email: '',
+    };
+  }
+
   const token = newInvitationToken();
-  await prisma.restaurantInvitation.create({
-    data: {
-      tokenHash: hashInvitationToken(token),
-      email: email.data,
-      expiresAt: new Date(Date.now() + hours.data * 60 * 60 * 1000),
-    },
+  await prisma.$transaction(async tx => {
+    // Keep a single valid invitation per invited email. Old links become
+    // invalid immediately after the fresh invitation is generated.
+    await tx.restaurantInvitation.updateMany({
+      where: { email: email.data, usedAt: null, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    await tx.restaurantInvitation.create({
+      data: {
+        tokenHash: hashInvitationToken(token),
+        email: email.data,
+        expiresAt: new Date(Date.now() + hours.data * 60 * 60 * 1000),
+      },
+    });
   });
   revalidatePath('/admin');
 
