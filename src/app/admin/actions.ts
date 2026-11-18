@@ -2,6 +2,8 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
+import { DeleteObjectsCommand } from '@aws-sdk/client-s3';
+import { getImageStorage, storageIsConfigured } from '@/lib/image-storage';
 import { adminAccountAction, canApplyAccountAction } from '@/lib/admin-account-action';
 import { requireAdminSession, endAdminSession } from '@/lib/admin-session';
 import { hashInvitationToken, invitationEmailSchema, inviteDurationSchema, newInvitationToken } from '@/lib/invitation-tokens';
@@ -14,13 +16,32 @@ export async function createInvitation(_state: InviteResult, form: FormData): Pr
   const hours = inviteDurationSchema.safeParse(form.get('hours'));
   if (!email.success || !hours.success) return { error: 'Comprueba el correo y la duración.', path: '', email: '' };
 
+  const existing = await prisma.user.findUnique({
+    where: { email: email.data },
+    select: { id: true },
+  });
+  if (existing) {
+    return {
+      error: 'Ese correo ya pertenece a una cuenta. No necesita otra invitación; revisa su acceso en Usuarios registrados.',
+      path: '', email: '',
+    };
+  }
+
   const token = newInvitationToken();
-  await prisma.restaurantInvitation.create({
-    data: {
-      tokenHash: hashInvitationToken(token),
-      email: email.data,
-      expiresAt: new Date(Date.now() + hours.data * 60 * 60 * 1000),
-    },
+  await prisma.$transaction(async tx => {
+    // Keep a single valid invitation per invited email. Old links become
+    // invalid immediately after the fresh invitation is generated.
+    await tx.restaurantInvitation.updateMany({
+      where: { email: email.data, usedAt: null, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    await tx.restaurantInvitation.create({
+      data: {
+        tokenHash: hashInvitationToken(token),
+        email: email.data,
+        expiresAt: new Date(Date.now() + hours.data * 60 * 60 * 1000),
+      },
+    });
   });
   revalidatePath('/admin');
 
@@ -92,6 +113,85 @@ export async function changeAccountAccess(form: FormData) {
         action: action === 'pause' ? 'ACCOUNT_PAUSED' : action === 'resume' ? 'ACCOUNT_RESUMED' : action === 'unlock' ? 'ACCOUNT_UNLOCKED' : 'ACCOUNT_ACCESS_REMOVED',
         userId, email: user.email,
         details: action === 'remove' ? 'Access removed; restaurant history retained.' : 'Access changed by administrator.',
+      },
+    });
+  });
+  revalidatePath('/admin');
+}
+
+export async function permanentlyDeleteRestaurant(form: FormData) {
+  await requireAdminSession();
+  const restaurantId = form.get('restaurantId');
+  const confirmation = form.get('confirmation');
+  if (typeof restaurantId !== 'string' || !/^c[a-z0-9]{20,}$/.test(restaurantId) || typeof confirmation !== 'string') {
+    throw new Error('INVALID_RESTAURANT_DELETE');
+  }
+
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { id: restaurantId },
+    select: {
+      id: true, name: true,
+      members: { select: { userId: true, user: { select: { email: true } } } },
+      menus: { select: { categories: { select: { dishes: {
+        select: { imageKey: true, imageUploads: { select: { objectKey: true } } },
+      } } } } },
+    },
+  });
+  if (!restaurant || restaurant.name !== confirmation.trim()) throw new Error('CONFIRM_RESTAURANT_NAME');
+
+  // Remove private image objects first. If storage isn't reachable, don't
+  // erase the DB references needed to recover and clean up those objects.
+  const keys = new Set<string>();
+  for (const menu of restaurant.menus) {
+    for (const category of menu.categories) {
+      for (const dish of category.dishes) {
+        if (dish.imageKey) keys.add(dish.imageKey);
+        for (const upload of dish.imageUploads) keys.add(upload.objectKey);
+      }
+    }
+  }
+  if (keys.size > 0) {
+    if (!storageIsConfigured()) throw new Error('STORAGE_REQUIRED_FOR_DELETE');
+    const { bucket, client } = getImageStorage();
+    const allKeys = [...keys];
+    for (let i = 0; i < allKeys.length; i += 500) {
+      const result = await client.send(new DeleteObjectsCommand({
+        Bucket: bucket,
+        Delete: { Objects: allKeys.slice(i, i + 500).map(Key => ({ Key })), Quiet: true },
+      }));
+      if (result.Errors?.length) throw new Error('IMAGE_CLEANUP_FAILED');
+    }
+  }
+
+  await prisma.$transaction(async tx => {
+    // Only remove the intended tenant, not any other restaurant sharing staff.
+    const removed = await tx.restaurant.deleteMany({
+      where: { id: restaurantId, name: restaurant.name },
+    });
+    if (removed.count !== 1) throw new Error('RESTAURANT_ALREADY_CHANGED');
+
+    // RestaurantInvitation.restaurantId is intentionally not a foreign key.
+    // Delete invitations linked to the erased tenant so its customer record
+    // is no longer present in the invitations database.
+    await tx.restaurantInvitation.deleteMany({ where: { restaurantId } });
+
+    const removedUserIds: string[] = [];
+    for (const member of restaurant.members) {
+      // Preserve accounts also attached to another restaurant.
+      const erased = await tx.user.deleteMany({ where: { id: member.userId, memberships: { none: {} } } });
+      if (erased.count === 1) removedUserIds.push(member.userId);
+    }
+    // Remove the personal identifiers of accounts exclusive to this tenant
+    // from older administrative logs, while retaining operation timestamps.
+    await tx.adminAuditEvent.updateMany({
+      where: { userId: { in: removedUserIds } },
+      data: { userId: null, email: 'redacted', details: 'Prior account action - erased client' },
+    });
+    await tx.adminAuditEvent.create({
+      data: {
+        action: 'RESTAURANT_HARD_DELETED',
+        email: 'redacted',
+        details: 'Restaurant deleted by administrator; ID: ' + restaurantId,
       },
     });
   });

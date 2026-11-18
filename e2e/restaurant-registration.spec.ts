@@ -16,9 +16,13 @@ async function adminLogin(page: import('@playwright/test').Page) {
 async function issue(page: import('@playwright/test').Page, email: string, hours = '48') {
   await page.getByLabel('Correo del propietario').fill(email);
   await page.getByLabel('Caducidad').selectOption(hours);
+  const linkField = page.getByLabel('Enlace de invitación');
+  const previous = await linkField.count() ? await linkField.inputValue() : '';
   await page.getByRole('button', { name: 'Crear invitación' }).click();
-  const url = await page.getByLabel('Enlace de invitación').inputValue();
-  expect(url).toContain('/registro-restaurante/');
+  await expect(linkField).not.toHaveValue(previous);
+  const url = await linkField.inputValue();
+  expect(url).toMatch(/^https?:\/\/[^/]+\/registro-restaurante\/[a-f0-9]{64}$/);
+  await expect(page.getByRole('link', { name: 'Abrir invitación y comprobar' })).toHaveAttribute('href', /\/registro-restaurante\/[a-f0-9]{64}$/);
   return url;
 }
 
@@ -103,4 +107,26 @@ test('admin logout invalidates the scoped administrator session', async ({ page 
   await expect(page).toHaveURL(/\/admin\/acceso/);
   await page.goto('/admin');
   await expect(page).toHaveURL(/\/admin\/acceso/);
+});
+
+// The invitation URL is asserted as an absolute URL above.
+
+test('reissuing a pending invitation invalidates the old link', async ({ page }) => {
+  await adminLogin(page);
+  const email = 'reissue-' + crypto.randomUUID() + '@example.invalid';
+  const first = await issue(page, email);
+  const second = await issue(page, email);
+  expect(second).not.toBe(first);
+  await page.goto(first);
+  await expect(page.getByText(/ha caducado, ya se ha utilizado o ha sido revocado/)).toBeVisible();
+  await page.goto(second);
+  await expect(page.getByLabel('Correo invitado')).toHaveValue(email);
+});
+
+test('admin cannot invite an existing account to create a duplicate restaurant', async ({ page }) => {
+  await adminLogin(page);
+  await page.getByLabel('Correo del propietario').fill('e2e-owner@example.invalid');
+  await page.getByRole('button', { name: 'Crear invitación' }).click();
+  await expect(page.locator('p.auth-alert[role="alert"]')).toContainText('ya pertenece a una cuenta');
+  await expect(page.getByLabel('Enlace de invitación')).toHaveCount(0);
 });

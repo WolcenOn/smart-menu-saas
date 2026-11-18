@@ -3,14 +3,14 @@ import { prisma } from '@/lib/db';
 import { requireAdminSession } from '@/lib/admin-session';
 import { accountStatus } from '@/lib/account-status';
 import { AdminInvitationForm } from '@/components/admin-invitation-form';
-import { logoutAdmin, revokeInvitation, changeAccountAccess } from './actions';
+import { logoutAdmin, revokeInvitation, changeAccountAccess, permanentlyDeleteRestaurant } from './actions';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminHomePage() {
   await requireAdminSession();
 
-  const [invites, users, events, restaurantCount] = await Promise.all([
+  const [invites, users, events, restaurants] = await Promise.all([
     prisma.restaurantInvitation.findMany({
       orderBy: { createdAt: 'desc' }, take: 200,
       select: {
@@ -34,7 +34,12 @@ export default async function AdminHomePage() {
       orderBy: { createdAt: 'desc' }, take: 100,
       select: { id: true, action: true, email: true, createdAt: true },
     }),
-    prisma.restaurant.count(),
+    prisma.restaurant.findMany({
+      orderBy: { createdAt: 'desc' }, take: 200,
+      select: { id: true, name: true, slug: true, createdAt: true,
+        members: { select: { user: { select: { suspendedAt: true, deletedAt: true } } } },
+      },
+    }),
   ]);
   const attachedRestaurants = await prisma.restaurant.findMany({
     where: { id: { in: invites.flatMap(i => i.restaurantId ? [i.restaurantId] : []) } },
@@ -58,7 +63,7 @@ export default async function AdminHomePage() {
         <p>Gestiona los accesos y consulta el historial sin perder las cartas de los restaurantes.</p>
 
         <div className="admin-summary">
-          <div><span>Restaurantes registrados</span><strong>{restaurantCount}</strong></div>
+          <div><span>Restaurantes registrados</span><strong>{restaurants.length}</strong></div>
           <div><span>Usuarios mostrados</span><strong>{users.length}</strong></div>
           <div><span>Cuentas activas mostradas</span><strong>{activeAccounts}</strong></div>
         </div>
@@ -91,6 +96,43 @@ export default async function AdminHomePage() {
               </div>
             )}
           </section>
+        </section>
+
+        <section className="admin-accounts-section" aria-label="Clientes registrados">
+          <div className="editor-section-title"><h2>Clientes y restaurantes</h2><span>{restaurants.length} restaurantes</span></div>
+          <p>Estado del cliente y eliminación real de sus datos. Esta operación no se puede deshacer.</p>
+          <div className="admin-account-list">
+            {restaurants.map(restaurant => {
+              const active = restaurant.members.some(member => !member.user.deletedAt && !member.user.suspendedAt);
+              return (
+                <article className="admin-account" key={restaurant.id} aria-label={'Cliente ' + restaurant.name}>
+                  <div className="admin-account-main">
+                    <div className="admin-dish-title">
+                      <strong>{restaurant.name}</strong>
+                      <span className={'admin-account-status admin-account-status-' + (active ? 'active' : 'paused')}>
+                        {active ? 'Activo' : 'Sin acceso activo'}
+                      </span>
+                    </div>
+                    <p>{restaurant.members.length} usuarios asociados · Alta {restaurant.createdAt.toLocaleDateString('es-ES')}</p>
+                    <Link href={'/r/' + restaurant.slug}>Ver carta</Link>
+                  </div>
+                  <div className="admin-account-actions">
+                    <details className="admin-remove-details">
+                      <summary>Eliminar cliente y datos de PostgreSQL</summary>
+                      <p>Se borrarán el restaurante, todas sus cartas, platos, fotografías almacenadas, invitaciones asociadas y cuentas sin otros restaurantes. Se conservará únicamente un evento técnico de auditoría sin correo ni nombre del cliente.</p>
+                      <form action={permanentlyDeleteRestaurant}>
+                        <input type="hidden" name="restaurantId" value={restaurant.id} />
+                        <label>Escribe exactamente <strong>{restaurant.name}</strong> para confirmar
+                          <input name="confirmation" type="text" required autoComplete="off" />
+                        </label>
+                        <button type="submit" className="editor-toggle editor-toggle-stop">Eliminar cliente definitivamente</button>
+                      </form>
+                    </details>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
         </section>
 
         <section className="admin-accounts-section" aria-label="Gestión de usuarios">
